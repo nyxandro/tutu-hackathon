@@ -1,0 +1,23 @@
+services:
+  db:
+    image: postgres:18-alpine
+    container_name: tutu-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: tutu
+      POSTGRES_PASSWORD: tutu
+      POSTGRES_DB: tutu
+    ports:
+      # 5433 наружу: 5432 может быть занят локальным постгресом
+      - '127.0.0.1:5433:5432'
+    volumes:
+      # postgres:18+ ожидает один маунт на /var/lib/postgresql, данные лягут в подкаталог
+      - tutu-pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U tutu -d tutu']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  tutu-pgdata:

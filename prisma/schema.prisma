@@ -1,0 +1,44 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// Диалог пользователя с агентом. Персист нужен, чтобы демо можно было
+// перезагрузить, не потеряв показанный сценарий.
+model ChatSession {
+  id        String    @id @default(cuid())
+  title     String    @default("Новый поиск")
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  messages  Message[]
+}
+
+// Сообщение в формате UIMessage из AI SDK: parts хранит и текст, и вызовы
+// инструментов с их результатами, поэтому карточки восстанавливаются как есть.
+model Message {
+  id        String      @id @default(cuid())
+  sessionId String
+  session   ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  role      String
+  parts     Json
+  createdAt DateTime    @default(now())
+
+  @@index([sessionId, createdAt])
+}
+
+// Кэш ответов MCP Туту. Снимает риск HTTP 429 на демо и ускоряет повторные
+// запросы: один и тот же поиск во время отладки не бьёт по внешнему серверу.
+model McpCache {
+  key       String   @id
+  tool      String
+  args      Json
+  result    Json
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+
+  @@index([expiresAt])
+}
