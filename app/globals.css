@@ -128,3 +128,17 @@
     @apply font-sans;
   }
 }
+
+/* Базовая типографика макета: Onest как основной шрифт всего интерфейса. */
+body {
+  font-family: var(--font-onest), -apple-system, 'Segoe UI', Roboto, sans-serif;
+  background: #EDEDFA;
+  margin: 0;
+}
+
+/* Спиннер этапов поиска */
+@keyframes route-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

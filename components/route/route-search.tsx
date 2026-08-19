@@ -1,202 +1,476 @@
 /**
- * Экран поиска маршрута. Главная мысль интерфейса: когда прямого рейса нет,
- * пользователь видит не пустую выдачу, а собранный маршрут с пересадкой.
+ * Экран поиска по макету: тёмная шапка с формой, состояния пустого экрана,
+ * прогресса, результатов, «уехать нельзя» и ошибки.
  *
  * Экспорты:
- * - RouteSearch — форма запроса и результаты
+ * - RouteSearch — весь экран продукта
  */
 
 'use client';
 
-import { useState } from 'react';
-import { Loader2, Route as RouteIcon, SearchX, TriangleAlert } from 'lucide-react';
-import type { RouteSearchResult } from '@/lib/route-builder';
-import { ROUTE_EXAMPLES } from '@/lib/config';
-import { pluralize as plural } from '@/lib/format';
+import { useEffect, useRef, useState } from 'react';
+import type { RouteChain, RouteSearchResult } from '@/lib/route-builder';
+import { ROUTE_EXAMPLES, SEARCH_STAGE_MS } from '@/lib/config';
+import { COLORS, formatRub } from '@/lib/design';
+import { formatTime, pluralize } from '@/lib/format';
 import { ChainCard } from '@/components/route/chain-card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { HotelList } from '@/components/route/hotel-list';
+import { SearchForm } from '@/components/route/search-form';
 
-type Query = { origin: string; destination: string; date: string };
+type View = 'empty' | 'loading' | 'results' | 'none' | 'error';
+type Sort = 'arrival' | 'price';
 
 const MS_IN_DAY = 24 * 60 * 60 * 1000;
 
-export function RouteSearch() {
-  // Дата считается лениво на клиенте: серверный компонент обязан быть чистым,
-  // а поездка «прямо сейчас» чаще всего планируется на завтра.
-  const [query, setQuery] = useState<Query>(() => ({
-    origin: '',
-    destination: '',
-    date: new Date(Date.now() + MS_IN_DAY).toISOString().slice(0, 10),
-  }));
-  const [result, setResult] = useState<RouteSearchResult | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+function stageLabels(hub?: string): string[] {
+  return [
+    'Проверяем прямые рейсы',
+    'Прямых нет. Ищем, через какие города можно проехать',
+    hub ? `Проверяем расписание: ${hub}` : 'Проверяем расписание соседних городов',
+    'Сводим стыковки по времени',
+  ];
+}
 
-  async function search(next: Query) {
-    setQuery(next);
-    setLoading(true);
-    setError(null);
+export function RouteSearch() {
+  const [from, setFrom] = useState('Москва');
+  const [to, setTo] = useState('');
+  const [date, setDate] = useState(() =>
+    new Date(Date.now() + MS_IN_DAY).toISOString().slice(0, 10),
+  );
+
+  const [view, setView] = useState<View>('empty');
+  const [stage, setStage] = useState(0);
+  const [sort, setSort] = useState<Sort>('arrival');
+  const [result, setResult] = useState<RouteSearchResult | null>(null);
+  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  useEffect(() => () => timers.current.forEach(clearTimeout), []);
+
+  async function search(query: { from: string; to: string; date: string }) {
+    if (!query.from.trim() || !query.to.trim()) return;
+
+    // Этапы двигаются по времени: поиск идёт секунды, и пользователь должен
+    // видеть, что именно происходит, а не крутящийся кружок.
+    timers.current.forEach(clearTimeout);
+    setView('loading');
+    setStage(0);
     setResult(null);
+    timers.current = SEARCH_STAGE_MS.map((ms, index) =>
+      setTimeout(() => setStage(index + 1), ms),
+    );
 
     try {
       const response = await fetch('/api/route', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(next),
+        body: JSON.stringify({ origin: query.from, destination: query.to, date: query.date }),
       });
       const data = await response.json();
+      timers.current.forEach(clearTimeout);
 
       if (!response.ok) {
-        setError(data.message ?? 'Не удалось выполнить поиск.');
+        setView('error');
         return;
       }
-      setResult(data as RouteSearchResult);
+
+      const found = data as RouteSearchResult;
+      setResult(found);
+      setView(found.direct.length + found.transfers.length > 0 ? 'results' : 'none');
     } catch {
-      // Сеть могла отвалиться на стороне клиента — показываем спокойный текст.
-      setError('Нет связи с сервисом. Проверьте подключение и попробуйте снова.');
-    } finally {
-      setLoading(false);
+      timers.current.forEach(clearTimeout);
+      setView('error');
     }
   }
 
-  const nothingFound =
-    result && result.direct.length === 0 && result.transfers.length === 0;
-
-  // В баннере называем города пересадки, а не регион: «через Ярославль» звучит
-  // как ответ, «через Ярославская область» — как ошибка.
-  const hubList = result
-    ? [...new Set(result.transfers.map((chain) => chain.hub).filter(Boolean))].join(' или ')
-    : '';
+  const chains: RouteChain[] = result ? [...result.direct, ...result.transfers] : [];
+  const sorted = [...chains].sort((a, b) =>
+    sort === 'price' ? a.totalPrice - b.totalPrice : a.arrivalAt.localeCompare(b.arrivalAt),
+  );
+  const earliest = [...chains].sort((a, b) => a.arrivalAt.localeCompare(b.arrivalAt))[0];
+  const cheapest = [...chains].sort((a, b) => a.totalPrice - b.totalPrice)[0];
+  const noDirect = result ? result.direct.length === 0 : false;
+  const total = chains.length;
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-8">
-      <header className="flex items-center gap-3">
-        <RouteIcon className="size-6 text-primary" />
-        <div>
-          <h1 className="text-lg leading-tight font-semibold">Туда, куда не ищется</h1>
-          <p className="text-sm text-muted-foreground">
-            Собираем поездку через пересадку, когда прямого билета нет
-          </p>
-        </div>
-      </header>
-
-      <form
-        className="grid gap-2 sm:grid-cols-[1fr_1fr_auto_auto]"
-        onSubmit={(event) => {
-          event.preventDefault();
-          search(query);
+    <div style={{ background: COLORS.bg, minHeight: '100vh', color: COLORS.inkSoft }}>
+      <SearchForm
+        from={from}
+        to={to}
+        date={date}
+        showExamples={view === 'empty'}
+        onFrom={setFrom}
+        onTo={setTo}
+        onDate={setDate}
+        onSearch={() => search({ from, to, date })}
+        onExample={(example) => {
+          setFrom(example.origin);
+          setTo(example.destination);
+          void search({ from: example.origin, to: example.destination, date });
         }}
-      >
-        <Input
-          value={query.origin}
-          onChange={(e) => setQuery({ ...query, origin: e.target.value })}
-          placeholder="Откуда"
-          className="h-11"
-        />
-        <Input
-          value={query.destination}
-          onChange={(e) => setQuery({ ...query, destination: e.target.value })}
-          placeholder="Куда"
-          className="h-11"
-        />
-        <Input
-          type="date"
-          value={query.date}
-          onChange={(e) => setQuery({ ...query, date: e.target.value })}
-          className="h-11"
-        />
-        <Button type="submit" className="h-11" disabled={loading}>
-          {loading ? <Loader2 className="size-4 animate-spin" /> : 'Найти'}
-        </Button>
-      </form>
+      />
 
-      {!result && !loading && !error ? (
-        <div className="flex flex-wrap gap-2">
-          <span className="w-full text-xs text-muted-foreground">Попробуйте:</span>
-          {ROUTE_EXAMPLES.map((example) => (
-            <Button
-              key={`${example.origin}-${example.destination}`}
-              variant="outline"
-              size="sm"
-              className="rounded-full"
-              onClick={() => search({ ...example, date: query.date })}
+      <div style={{ maxWidth: 1000, margin: '0 auto', padding: '28px 24px 80px' }}>
+        {view === 'empty' ? <HowItWorks /> : null}
+
+        {view === 'loading' ? <Stages stage={stage} hub={result?.triedHubs[0]} /> : null}
+
+        {view === 'results' && result ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            <div
+              style={{
+                background: COLORS.accentSoft,
+                borderRadius: 20,
+                padding: '26px 30px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 10,
+              }}
             >
-              {example.origin} → {example.destination}
-            </Button>
-          ))}
-        </div>
-      ) : null}
-
-      {error ? (
-        <div className="flex items-center gap-2 rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-sm text-destructive">
-          <TriangleAlert className="size-4 shrink-0" />
-          <span>{error}</span>
-        </div>
-      ) : null}
-
-      {loading ? (
-        <p className="text-sm text-muted-foreground">
-          Проверяем прямые рейсы, а если их нет — подбираем пересадку…
-        </p>
-      ) : null}
-
-      {result ? (
-        <div className="flex flex-col gap-6">
-          {/* Ключевой кадр: прямых нет, но поездка всё равно собирается */}
-          {result.direct.length === 0 && result.transfers.length > 0 ? (
-            <div className="rounded-lg border border-primary/30 bg-primary/5 px-4 py-3">
-              <p className="text-sm font-medium">
-                Прямого рейса {result.query.origin} → {result.query.destination} нет
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Но доехать можно — собрали {result.transfers.length}{' '}
-                {plural(result.transfers.length, 'вариант', 'варианта', 'вариантов')} с
-                пересадкой{hubList ? ` через ${hubList}` : ''}.
-              </p>
+              <div
+                style={{
+                  fontSize: 30,
+                  fontWeight: 700,
+                  lineHeight: 1.12,
+                  letterSpacing: '-.025em',
+                  color: COLORS.ink,
+                }}
+              >
+                {noDirect
+                  ? `Прямого рейса ${result.query.origin} → ${result.query.destination} нет`
+                  : `Нашли ${total} ${pluralize(total, 'способ', 'способа', 'способов')} добраться`}
+              </div>
+              <div style={{ fontSize: 16, color: COLORS.inkSoft, lineHeight: 1.45 }}>
+                {noDirect
+                  ? `Но доехать можно — собрали ${result.transfers.length} ${pluralize(result.transfers.length, 'вариант', 'варианта', 'вариантов')} с пересадкой. Самый быстрый: на месте в ${earliest ? formatTime(earliest.arrivalAt) : ''}.`
+                  : `Быстрее всего — на месте в ${earliest ? formatTime(earliest.arrivalAt) : ''}, дешевле всего — ${cheapest ? formatRub(cheapest.totalPrice) : ''}.`}
+              </div>
             </div>
-          ) : null}
 
-          {result.direct.length > 0 ? (
-            <section className="flex flex-col gap-3">
-              <h2 className="text-sm font-medium text-muted-foreground">Прямые рейсы</h2>
-              {result.direct.slice(0, 6).map((chain, index) => (
-                <ChainCard key={`direct-${index}`} chain={chain} />
-              ))}
-            </section>
-          ) : null}
-
-          {result.transfers.length > 0 ? (
-            <section className="flex flex-col gap-3">
-              <h2 className="text-sm font-medium text-muted-foreground">
-                С пересадкой — таких вариантов нет в обычном поиске
-              </h2>
-              {result.transfers.map((chain, index) => (
-                <ChainCard key={`transfer-${index}`} chain={chain} />
-              ))}
-            </section>
-          ) : null}
-
-          {nothingFound ? (
-            <div className="flex flex-col items-center gap-2 py-10 text-center">
-              <SearchX className="size-8 text-muted-foreground" />
-              <p className="font-medium">Уехать в этот день не получится</p>
-              <p className="max-w-md text-sm text-muted-foreground">
-                Ни прямых рейсов, ни стыковок через соседние города на выбранную дату
-                не нашлось. Попробуйте соседнюю дату.
-              </p>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 16,
+                flexWrap: 'wrap',
+              }}
+            >
+              <div style={{ fontSize: 15, color: COLORS.muted }}>
+                {total} {pluralize(total, 'вариант', 'варианта', 'вариантов')}
+              </div>
+              <div
+                style={{
+                  display: 'inline-flex',
+                  padding: 4,
+                  gap: 4,
+                  background: COLORS.surface,
+                  borderRadius: 12,
+                }}
+              >
+                <SortButton active={sort === 'arrival'} onClick={() => setSort('arrival')}>
+                  Раньше приеду
+                </SortButton>
+                <SortButton active={sort === 'price'} onClick={() => setSort('price')}>
+                  Дешевле
+                </SortButton>
+              </div>
             </div>
-          ) : null}
 
-          {result.notes.length > 0 ? (
-            <div className="rounded-md border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-              {result.notes.map((note) => (
-                <p key={note}>{note}</p>
-              ))}
+            {sorted.map((chain, index) => (
+              <ChainCard key={`${chain.hub ?? 'direct'}-${chain.departureAt}-${index}`} chain={chain} />
+            ))}
+
+            <Notes notes={result.notes} />
+          </div>
+        ) : null}
+
+        {view === 'none' && result ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            <div
+              style={{
+                background: COLORS.surface,
+                borderRadius: 20,
+                boxShadow: '0 4px 18px rgba(21,12,86,.06)',
+                padding: '30px 32px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 20,
+              }}
+            >
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div
+                  style={{
+                    fontSize: 28,
+                    fontWeight: 700,
+                    letterSpacing: '-.02em',
+                    color: COLORS.ink,
+                  }}
+                >
+                  Уехать в этот день не получится
+                </div>
+                <div style={{ fontSize: 16, color: COLORS.inkSoft, lineHeight: 1.45 }}>
+                  Ни прямых рейсов, ни стыковок через соседние города на эту дату не нашлось.
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  const next = new Date(new Date(date).getTime() + MS_IN_DAY)
+                    .toISOString()
+                    .slice(0, 10);
+                  setDate(next);
+                  void search({ from, to, date: next });
+                }}
+                style={{
+                  height: 52,
+                  padding: '0 26px',
+                  border: 'none',
+                  borderRadius: 12,
+                  background: COLORS.accent,
+                  color: '#FFFFFF',
+                  fontFamily: 'inherit',
+                  fontSize: 16,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  width: 'fit-content',
+                }}
+              >
+                Посмотреть следующий день
+              </button>
             </div>
-          ) : null}
-        </div>
-      ) : null}
+
+            {result.stay ? <HotelList stay={result.stay} /> : null}
+            <Notes notes={result.notes} />
+          </div>
+        ) : null}
+
+        {view === 'error' ? (
+          <div
+            style={{
+              display: 'flex',
+              gap: 14,
+              alignItems: 'flex-start',
+              padding: '22px 24px',
+              background: COLORS.errorBg,
+              borderRadius: 20,
+            }}
+          >
+            <span
+              style={{
+                width: 24,
+                height: 24,
+                borderRadius: 999,
+                background: COLORS.error,
+                color: '#FFFFFF',
+                fontSize: 15,
+                fontWeight: 700,
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flex: 'none',
+              }}
+            >
+              !
+            </span>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div style={{ fontSize: 16, color: COLORS.errorInk, lineHeight: 1.45 }}>
+                Не удалось получить данные Туту. Попробуйте повторить запрос через минуту.
+              </div>
+              <button
+                onClick={() => search({ from, to, date })}
+                style={{
+                  height: 48,
+                  padding: '0 22px',
+                  border: 'none',
+                  borderRadius: 12,
+                  background: COLORS.error,
+                  color: '#FFFFFF',
+                  fontFamily: 'inherit',
+                  fontSize: 15,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  width: 'fit-content',
+                }}
+              >
+                Повторить
+              </button>
+            </div>
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }
+
+function SortButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        padding: '9px 18px',
+        border: 'none',
+        borderRadius: 9,
+        background: active ? COLORS.accentSoft : COLORS.surface,
+        color: active ? COLORS.ink : COLORS.muted,
+        fontFamily: 'inherit',
+        fontSize: 15,
+        fontWeight: 600,
+        cursor: 'pointer',
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+function HowItWorks() {
+  const steps = [
+    'Проверяем прямые рейсы: поезда, автобусы, самолёты, электрички.',
+    'Если прямых нет — подбираем соседние города, через которые можно проехать.',
+    'Сводим стыковки по времени и показываем, во сколько вы будете на месте.',
+  ];
+
+  return (
+    <div
+      style={{
+        background: COLORS.surface,
+        borderRadius: 20,
+        boxShadow: '0 4px 18px rgba(21,12,86,.06)',
+        padding: '28px 30px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 18,
+      }}
+    >
+      <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-.02em', color: COLORS.ink }}>
+        Что происходит после запроса
+      </div>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+          gap: 20,
+        }}
+      >
+        {steps.map((text, index) => (
+          <div key={text} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: COLORS.accentLight }}>
+              0{index + 1}
+            </span>
+            <span style={{ fontSize: 16, color: COLORS.inkSoft, lineHeight: 1.45 }}>{text}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function Stages({ stage, hub }: { stage: number; hub?: string }) {
+  return (
+    <div
+      style={{
+        background: COLORS.surface,
+        borderRadius: 20,
+        boxShadow: '0 4px 18px rgba(21,12,86,.06)',
+        padding: '28px 30px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 16,
+      }}
+    >
+      {stageLabels(hub).map((text, index) => {
+        const done = index < stage;
+        const current = index === stage;
+
+        return (
+          <div key={text} style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            {done ? (
+              <span
+                style={{
+                  width: 22,
+                  height: 22,
+                  borderRadius: 999,
+                  background: COLORS.accentSoft,
+                  color: COLORS.accent,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: 12,
+                  fontWeight: 700,
+                  flex: 'none',
+                }}
+              >
+                ✓
+              </span>
+            ) : current ? (
+              <span
+                style={{
+                  width: 22,
+                  height: 22,
+                  borderRadius: 999,
+                  border: `2px solid ${COLORS.accent}`,
+                  borderTopColor: 'transparent',
+                  flex: 'none',
+                  animation: 'route-spin 1s linear infinite',
+                }}
+              />
+            ) : (
+              <span
+                style={{
+                  width: 22,
+                  height: 22,
+                  borderRadius: 999,
+                  border: `2px solid ${COLORS.line}`,
+                  flex: 'none',
+                }}
+              />
+            )}
+            <span
+              style={{
+                fontSize: 16,
+                color: done ? COLORS.mutedSoft : current ? COLORS.ink : COLORS.faint,
+                fontWeight: current ? 600 : 400,
+              }}
+            >
+              {text}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function Notes({ notes }: { notes: string[] }) {
+  if (notes.length === 0) return null;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '4px 4px 0' }}>
+      <div
+        style={{
+          fontSize: 12,
+          fontWeight: 700,
+          letterSpacing: '.1em',
+          textTransform: 'uppercase',
+          color: COLORS.mutedSoft,
+        }}
+      >
+        Что проверили
+      </div>
+      {notes.map((note) => (
+        <div key={note} style={{ fontSize: 13, color: COLORS.mutedSoft, lineHeight: 1.5 }}>
+          {note}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export { ROUTE_EXAMPLES };

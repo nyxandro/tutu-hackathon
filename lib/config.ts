@@ -88,3 +88,15 @@ export const WARM_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 export const HUB_SUGGEST_MODEL = 'dots-studio/dots-3-note-preview:free';
 export const HUB_SUGGEST_TIMEOUT_MS = 15_000;
 export const MAX_SUGGESTED_HUBS = 3;
+
+// Тайминги смены этапов на экране поиска, миллисекунды от старта запроса.
+export const SEARCH_STAGE_MS = [1200, 2300, 3400];
+
+// Особые условия поездки. Пока влияют только на подсказки в интерфейсе —
+// фильтрация по ним появится, когда будет что фильтровать в ответах Туту.
+export const TRAVEL_CONSTRAINTS = [
+  { key: 'pet', label: 'Еду с животным' },
+  { key: 'child', label: 'Еду с ребёнком' },
+  { key: 'night', label: 'Не подходит ночная поездка' },
+  { key: 'lower', label: 'Нужны только нижние места' },
+];
