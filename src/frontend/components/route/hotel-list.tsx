@@ -14,6 +14,7 @@ import type { HotelOffer } from '@/modules/tutu/types';
 import type { StayOffer } from '@/frontend/hooks/use-agent-search';
 import { COLORS, formatRub, hubIn } from '@/frontend/design';
 import { pluralize } from '@/frontend/format';
+import { distanceKm, formatDistance } from '@/frontend/geo';
 
 const MS_IN_DAY = 24 * 60 * 60 * 1000;
 
@@ -26,7 +27,16 @@ function priceOf(hotel: HotelOffer): number | undefined {
   return (hotel.best_offer as { price?: { amount?: number } } | undefined)?.price?.amount;
 }
 
-export function HotelList({ stay, anchorId }: { stay: StayOffer; anchorId: string }) {
+export function HotelList({
+  stay,
+  anchorId,
+  coords,
+}: {
+  stay: StayOffer;
+  anchorId: string;
+  /** Координаты человека, если он разрешил определить положение. */
+  coords?: { lat: number; lon: number };
+}) {
   if (stay.hotels.length === 0) return null;
 
   const nights = nightsBetween(stay.checkIn, stay.checkOut);
@@ -50,9 +60,23 @@ export function HotelList({ stay, anchorId }: { stay: StayOffer; anchorId: strin
           gap: 16,
         }}
       >
-        {stay.hotels.map((hotel, index) => (
-          <HotelCard key={hotel.hotel_id ?? index} hotel={hotel} nightsLabel={nightsLabel} />
-        ))}
+        {stay.hotels.map((hotel, index) => {
+          const lat = hotel.location?.lat;
+          const lng = hotel.location?.lng;
+          const km =
+            coords && typeof lat === 'number' && typeof lng === 'number'
+              ? distanceKm(coords.lat, coords.lon, lat, lng)
+              : undefined;
+
+          return (
+            <HotelCard
+              key={hotel.hotel_id ?? index}
+              hotel={hotel}
+              nightsLabel={nightsLabel}
+              distance={km}
+            />
+          );
+        })}
       </div>
     </div>
   );
@@ -112,7 +136,15 @@ function PetBadge() {
   );
 }
 
-function HotelCard({ hotel, nightsLabel }: { hotel: HotelOffer; nightsLabel: string }) {
+function HotelCard({
+  hotel,
+  nightsLabel,
+  distance,
+}: {
+  hotel: HotelOffer;
+  nightsLabel: string;
+  distance?: number;
+}) {
   const price = priceOf(hotel);
   const photo = hotel.photos?.[0];
   const address = hotel.fullAddress ?? hotel.address;
@@ -143,6 +175,33 @@ function HotelCard({ hotel, nightsLabel }: { hotel: HotelOffer; nightsLabel: str
         ) : null}
 
         {hotel.petFriendly ? <PetBadge /> : null}
+
+        {typeof distance === 'number' ? (
+          <span
+            style={{
+              position: 'absolute',
+              bottom: 10,
+              left: 10,
+              padding: '5px 10px',
+              borderRadius: 999,
+              background: 'rgba(21,12,86,.82)',
+              color: '#FFFFFF',
+              fontSize: 12,
+              fontWeight: 600,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 5,
+            }}
+          >
+            <span
+              aria-hidden
+              style={{ fontFamily: "'Material Symbols Rounded'", fontSize: 14, lineHeight: 1 }}
+            >
+              near_me
+            </span>
+            {formatDistance(distance)}
+          </span>
+        ) : null}
 
         {typeof hotel.rating === 'number' ? (
           <span

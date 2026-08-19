@@ -49,6 +49,8 @@ export type HotelOffer = {
   rating?: number;
   review_count?: number;
   address?: string;
+  /** Координаты гостиницы — по ним считаем расстояние от человека. */
+  location?: { lat?: number; lng?: number };
   photos?: string[];
   checkout_url?: string;
   best_offer?: Record<string, unknown>;

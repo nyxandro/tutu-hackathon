@@ -12,6 +12,7 @@
 
 import { useCallback, useState } from 'react';
 import cities from '@/modules/routing/cities.json';
+import { distanceKm } from '@/frontend/geo';
 import {
   GEOLOCATION_TIMEOUT_MS,
   HUB_CITY_POPULATION,
@@ -26,23 +27,12 @@ const WITH_COORDS = (cities as City[]).filter(
   (city): city is Required<City> => typeof city.lat === 'number' && typeof city.lon === 'number',
 );
 
-const EARTH_RADIUS_KM = 6371;
-
-/** Расстояние по большому кругу: для выбора ближайшего города точности хватает. */
-function distanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const toRad = (deg: number) => (deg * Math.PI) / 180;
-  const dLat = toRad(lat2 - lat1);
-  const dLon = toRad(lon2 - lon1);
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
-  return 2 * EARTH_RADIUS_KM * Math.asin(Math.sqrt(a));
-}
-
 export type GeoStatus = 'idle' | 'asking' | 'done' | 'denied' | 'failed';
 
 export type GeoResult = {
   city: string | null;
+  /** Координаты человека: по ним считаем расстояние до гостиниц. */
+  coords?: { lat: number; lon: number };
   /** Что показать человеку: определили город, отказал в доступе или не вышло. */
   message: string;
   /** Точность позиции в метрах: на десктопе она часто в километрах. */
@@ -108,6 +98,7 @@ export function useNearestCity() {
           setStatus('done');
           setResult({
             city: nearest.n,
+            coords: { lat: latitude, lon: longitude },
             // Точность стоит показать: на десктопе положение берётся по сети
             // и может промахнуться на сотни километров.
             message:

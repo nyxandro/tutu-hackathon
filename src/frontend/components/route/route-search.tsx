@@ -275,7 +275,7 @@ export function RouteSearch() {
               <ChainCard key={`${chain.hub ?? 'direct'}-${chain.departureAt}-${index}`} chain={chain} />
             ))}
 
-            {stay ? <HotelList stay={stay} anchorId={STAY_ANCHOR} /> : null}
+            {stay ? <HotelList stay={stay} anchorId={STAY_ANCHOR} coords={geoResult?.coords} /> : null}
           </>
         ) : null}
 
@@ -320,7 +320,7 @@ export function RouteSearch() {
               Посмотреть следующий день
             </button>
 
-            {stay ? <HotelList stay={stay} anchorId={STAY_ANCHOR} /> : null}
+            {stay ? <HotelList stay={stay} anchorId={STAY_ANCHOR} coords={geoResult?.coords} /> : null}
           </div>
         ) : null}
 
