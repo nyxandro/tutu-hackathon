@@ -22,6 +22,9 @@ export const COLORS = {
   surface: '#FFFFFF',
   surfaceAlt: '#F5F5FC',
   accent: '#6E56F8',
+  // Заливка пилюль в шапке: тот же тон, что у кнопки «Подобрать», но темнее —
+  // иначе фильтры спорят с главным действием за внимание.
+  chipFill: '#5340DE',
   accentHover: '#5B45E0',
   accentSoft: '#E4E0FE',
   accentLight: '#8A78FA',
