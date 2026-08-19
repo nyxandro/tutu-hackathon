@@ -127,7 +127,7 @@ export function SearchForm({
                 transition: 'font-size .45s cubic-bezier(.4,0,.2,1)',
               }}
             >
-              доехать
+              добраться
             </span>
           </div>
           <div

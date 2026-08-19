@@ -69,3 +69,9 @@ export const NEAREST_CITY_MAX_KM = 150;
 export const MAJOR_CITY_POPULATION = 300_000;
 export const HUB_CITY_POPULATION = 1_000_000;
 export const MAJOR_CITY_RADIUS_KM = 50;
+
+// Фотография для примера карточки гостиницы на странице помощи. Взята из
+// настоящего ответа Туту, лежащего в кэше поиска, — рисованных заглушек в
+// продукте нет нигде, включая справку.
+export const HELP_HOTEL_PHOTO =
+  'https://cdn2.tu-tu.ru/imghub/view/5172c686-bf90-411b-ab45-11a2cf1e9799/resize_500_500/4271b6c12b3a41b87b17f2bfcd92ed9a/4734718707830601bfdd40fff256074f.jpg';

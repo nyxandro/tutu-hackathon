@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Onest } from 'next/font/google';
 import '@/frontend/globals.css';
+import { SiteFooter } from '@/frontend/components/site-footer';
 
 const onest = Onest({
   variable: '--font-onest',
@@ -31,7 +32,12 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
           rel="stylesheet"
         />
       </head>
-      <body className="flex min-h-full flex-col">{children}</body>
+      {/* Подвал прижат к низу окна, пока страница короткая, и уезжает в поток,
+          как только контент заполнил экран: main растягивается, footer — нет. */}
+      <body className="flex min-h-full flex-col">
+        <main className="flex-1">{children}</main>
+        <SiteFooter />
+      </body>
     </html>
   );
 }
