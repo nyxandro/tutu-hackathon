@@ -14,10 +14,17 @@
 
 import { useCallback, useRef, useState } from 'react';
 import type { RouteChain, RouteSearchResult } from '@/modules/routing/builder';
+import type { HotelOffer } from '@/modules/tutu/types';
 import type { TraceStep } from '@/frontend/components/route/agent-trace';
 import { describeCall, describeResult } from '@/frontend/components/route/agent-trace-labels';
 
 export type SearchQuery = { origin: string; destination: string; date: string };
+export type StayOffer = {
+  city: string;
+  checkIn: string;
+  checkOut: string;
+  hotels: HotelOffer[];
+};
 export type SearchStatus = 'idle' | 'running' | 'done' | 'error';
 
 type ToolEvent = {
@@ -33,6 +40,7 @@ type ToolEvent = {
 export function useAgentSearch() {
   const [steps, setSteps] = useState<TraceStep[]>([]);
   const [chains, setChains] = useState<RouteChain[]>([]);
+  const [stay, setStay] = useState<StayOffer | null>(null);
   const [summary, setSummary] = useState('');
   const [status, setStatus] = useState<SearchStatus>('idle');
   const [fellBack, setFellBack] = useState(false);
@@ -67,6 +75,7 @@ export function useAgentSearch() {
     async (query: SearchQuery) => {
       setSteps([]);
       setChains([]);
+      setStay(null);
       setSummary('');
       setFellBack(false);
       setStatus('running');
@@ -151,6 +160,17 @@ export function useAgentSearch() {
                 setChains([...collected]);
               }
 
+              // Гостиницы приходят полными: с адресом, телефоном и ценой за всё
+              // проживание — модель их не пересказывает.
+              if (toolName === 'search_hotels' && Array.isArray(output.hotels)) {
+                setStay({
+                  city: String(output.city ?? ''),
+                  checkIn: String(output.check_in ?? ''),
+                  checkOut: String(output.check_out ?? ''),
+                  hotels: output.hotels as HotelOffer[],
+                });
+              }
+
               // Повтор — это сбой модели, а не шаг поиска: убираем строку из
               // ленты, чтобы работа не выглядела метанием.
               if (output.repeated === true) {
@@ -192,5 +212,5 @@ export function useAgentSearch() {
     [runPlain],
   );
 
-  return { steps, chains, summary, status, fellBack, search };
+  return { steps, chains, stay, summary, status, fellBack, search };
 }

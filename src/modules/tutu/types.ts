@@ -53,6 +53,10 @@ export type HotelOffer = {
   checkout_url?: string;
   best_offer?: Record<string, unknown>;
   review_summary?: Record<string, unknown>;
+  /** Поля ниже приходят только из get_offer_details, в поиске их нет. */
+  fullAddress?: string;
+  phones?: string[];
+  checkInTime?: string;
 };
 
 /** Возвращает список офферов независимо от домена — им пользуются и выжимка, и UI. */

@@ -41,3 +41,7 @@ export const RESCUE_HOTELS_LIMIT = 6;
 export const HUB_SUGGEST_MODEL = 'dots-studio/dots-3-note-preview:free';
 export const HUB_SUGGEST_TIMEOUT_MS = 15_000;
 export const MAX_SUGGESTED_HUBS = 3;
+
+// Для скольких гостиниц дотягиваем адрес и телефон: каждый — отдельный запрос,
+// а человеку хватает нескольких вариантов рядом.
+export const HOTEL_DETAILS_LIMIT = 3;

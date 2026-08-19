@@ -12,6 +12,7 @@
  */
 
 import type { RouteLeg } from '@/modules/routing/builder';
+import type { HotelOffer } from '@/modules/tutu/types';
 
 export type StoredLeg = {
   id: string;
@@ -34,6 +35,8 @@ export type AgentSession = {
   deadline: number;
   /** Конечный город поиска: по нему отличаем плечо «узел → цель». */
   target: string;
+  /** Гостиницы запасного плана, если поездку пришлось перенести. */
+  hotels?: { city: string; checkIn: string; checkOut: string; list: HotelOffer[] };
   next: () => string;
   /** Явное состояние для модели: что сделано и сколько осталось. */
   describe: () => string;

@@ -9,7 +9,7 @@
  */
 
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
-import { convertToModelMessages, createUIMessageStreamResponse, isStepCount, streamText, toUIMessageStream } from 'ai';
+import { createUIMessageStreamResponse, isStepCount, streamText, toUIMessageStream } from 'ai';
 import { AGENT_MAX_STEPS, AGENT_MODEL, AGENT_TIMEOUT_MS } from '@/modules/agent/config';
 import { buildAgentPrompt } from '@/modules/agent/prompt';
 import { createSession } from '@/modules/agent/session';

@@ -15,7 +15,7 @@ import { z } from 'zod';
 import { callTutu } from '@/modules/tutu/client';
 import { dedupe, pairLegs, searchLeg, toLeg, type RouteChain, type RouteLeg } from '@/modules/routing/builder';
 import { resolveHub } from '@/modules/routing/hubs';
-import { ROUTE_CHAINS_LIMIT } from '@/modules/routing/config';
+import { HOTEL_DETAILS_LIMIT, RESCUE_HOTELS_LIMIT, ROUTE_CHAINS_LIMIT } from '@/modules/routing/config';
 import type { AgentSession } from '@/modules/agent/session';
 import { toolError } from '@/modules/agent/errors';
 import { withRetry } from '@/modules/agent/retry';
@@ -28,6 +28,46 @@ import type { HotelOffer } from '@/modules/tutu/types';
  * а повторы отсекаются до обращения к сети.
  */
 const MAX_SEARCHES = 20;
+
+/** Цена за всё проживание: у Туту это best_offer.price с price_basis stay_total. */
+function priceOf(hotel: HotelOffer): number | undefined {
+  return (hotel.best_offer as { price?: { amount?: number } } | undefined)?.price?.amount;
+}
+
+/**
+ * Дотягивает адрес, телефоны и время заезда: в результатах поиска их нет,
+ * там только расстояние до центра.
+ */
+async function enrich(hotel: HotelOffer, checkIn: string, checkOut: string): Promise<HotelOffer> {
+  if (!hotel.hotel_id) return hotel;
+
+  const attempt = await withRetry(`детали отеля ${hotel.name ?? hotel.hotel_id}`, () =>
+    callTutu('get_offer_details', {
+      product_type: 'hotels',
+      hotel_id: hotel.hotel_id,
+      check_in: checkIn,
+      check_out: checkOut,
+      adults: 1,
+      view: 'compact',
+    }),
+  );
+
+  if (!attempt.ok) return hotel;
+
+  const details = (attempt.value as { hotel?: Record<string, unknown> }).hotel;
+  if (!details) return hotel;
+
+  const phones = Array.isArray(details.phones)
+    ? details.phones.filter((phone): phone is string => typeof phone === 'string' && phone.length > 0)
+    : [];
+
+  return {
+    ...hotel,
+    fullAddress: typeof details.address === 'string' ? details.address : undefined,
+    phones: phones.length > 0 ? phones : undefined,
+    checkInTime: typeof details.check_in_time === 'string' ? details.check_in_time : undefined,
+  };
+}
 
 /** Короткая сводка плеча для модели: без расписания целиком, только границы. */
 function summarizeLegs(legs: RouteLeg[]) {
@@ -260,34 +300,92 @@ export function createAgentTools(session: AgentSession, collected: RouteChain[])
 
     search_hotels: tool({
       description:
-        'Найти гостиницы в городе. Нужен, когда уехать в этот день не получается ' +
-        'и человеку надо где-то переночевать.',
+        'Найти гостиницы в городе с адресом, рейтингом и ценой за всё проживание. ' +
+        'Вызывай, когда уехать в нужный день не получается и человеку придётся ' +
+        'переночевать: он должен увидеть, где, а не искать сам.',
       inputSchema: z.object({
-        city: z.string(),
+        city: z.string().describe('Город, где нужно переночевать'),
         check_in: z.string().describe('Дата заезда ГГГГ-ММ-ДД'),
         check_out: z.string().describe('Дата выезда ГГГГ-ММ-ДД'),
       }),
       execute: async ({ city, check_in, check_out }) => {
         if (session.searchCount >= MAX_SEARCHES) {
-          return { error: 'Лимит запросов к Туту исчерпан.' };
+          return toolError(
+            'SEARCH_BUDGET_SPENT',
+            `Исчерпан лимит обращений к Туту (${MAX_SEARCHES}).`,
+            'Отвечай по тому, что уже нашёл.',
+          );
         }
         session.searchCount += 1;
 
-        const payload = await callTutu('search_hotels', {
-          city_name: city,
+        const attempt = await withRetry(`гостиницы в ${city}`, () =>
+          callTutu('search_hotels', {
+            city_name: city,
+            check_in,
+            check_out,
+            adults: 1,
+            view: 'compact',
+          }),
+        );
+
+        if (!attempt.ok) {
+          return toolError(
+            attempt.code,
+            `Не удалось получить гостиницы в городе ${city}.`,
+            'Скажи человеку, что список гостиниц сейчас недоступен.',
+          );
+        }
+
+        const all = Array.isArray(attempt.value.hotels)
+          ? (attempt.value.hotels as HotelOffer[])
+          : [];
+
+        // Дешёвые вперёд: человек не планировал ночевать и не выбирал отель заранее.
+        const cheapest = [...all]
+          .filter((hotel) => priceOf(hotel) !== undefined)
+          .sort((a, b) => (priceOf(a) ?? Infinity) - (priceOf(b) ?? Infinity))
+          .slice(0, RESCUE_HOTELS_LIMIT);
+
+        // Полный адрес и телефон лежат только в деталях, поэтому дотягиваем их
+        // для нескольких первых: человеку, который едет ночевать, нужен адрес,
+        // а не «684 м от центра».
+        const withDetails = await Promise.all(
+          cheapest.map(async (hotel, index) =>
+            index < HOTEL_DETAILS_LIMIT ? await enrich(hotel, check_in, check_out) : hotel,
+          ),
+        );
+
+        session.hotels = { city, checkIn: check_in, checkOut: check_out, list: withDetails };
+
+        return {
+          city,
           check_in,
           check_out,
-          adults: 1,
-          view: 'compact',
-        });
+          count: withDetails.length,
+          hotels: withDetails,
+          state: session.describe(),
+        };
+      },
 
-        const hotels = Array.isArray(payload.hotels) ? (payload.hotels as HotelOffer[]) : [];
+      // Модели незачем видеть фотографии и хеши предложений — только цены.
+      toModelOutput: ({ output }) => {
+        const result = output as {
+          error?: true;
+          city?: string;
+          count?: number;
+          hotels?: HotelOffer[];
+        };
+        if (result.error) return { type: 'json', value: result as never };
+
         return {
-          count: hotels.length,
-          cheapest: hotels
-            .map((h) => (h.best_offer as { price?: { amount?: number } })?.price?.amount)
-            .filter((price): price is number => typeof price === 'number')
-            .sort((a, b) => a - b)[0],
+          type: 'json',
+          value: {
+            city: result.city,
+            count: result.count,
+            cheapest: result.hotels?.[0]
+              ? { name: result.hotels[0].name, price: priceOf(result.hotels[0]) }
+              : undefined,
+          },
         };
       },
     }),

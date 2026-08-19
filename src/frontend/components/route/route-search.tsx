@@ -17,12 +17,15 @@ import { formatTime, pluralize } from '@/frontend/format';
 import { useAgentSearch, type SearchQuery } from '@/frontend/hooks/use-agent-search';
 import { AgentTrace } from '@/frontend/components/route/agent-trace';
 import { ChainCard } from '@/frontend/components/route/chain-card';
+import { HotelList } from '@/frontend/components/route/hotel-list';
 import { HowItWorks } from '@/frontend/components/route/how-it-works';
 import { SearchForm } from '@/frontend/components/route/search-form';
 
-type Sort = 'arrival' | 'price';
+type Sort = 'departure' | 'arrival' | 'price';
 
 const MS_IN_DAY = 24 * 60 * 60 * 1000;
+
+const STAY_ANCHOR = 'stay-options';
 
 const MONTHS = [
   'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
@@ -41,19 +44,25 @@ export function RouteSearch() {
   const [date, setDate] = useState(() =>
     new Date(Date.now() + MS_IN_DAY).toISOString().slice(0, 10),
   );
-  const [sort, setSort] = useState<Sort>('arrival');
+  // По умолчанию — раньше уехать: человеку, который не может выбраться, важнее
+  // всего не ждать, а не выиграть час в дороге.
+  const [sort, setSort] = useState<Sort>('departure');
 
-  const { steps, chains, summary, status, search } = useAgentSearch();
+  const { steps, chains, stay, summary, status, search } = useAgentSearch();
 
   function run(query: SearchQuery) {
     if (!query.origin.trim() || !query.destination.trim()) return;
     void search(query);
   }
 
-  const sorted = [...chains].sort((a, b) =>
-    sort === 'price' ? a.totalPrice - b.totalPrice : a.arrivalAt.localeCompare(b.arrivalAt),
-  );
-  const earliest = [...chains].sort((a, b) => a.arrivalAt.localeCompare(b.arrivalAt))[0];
+  const sorted = [...chains].sort((a, b) => {
+    if (sort === 'price') return a.totalPrice - b.totalPrice;
+    if (sort === 'arrival') return a.arrivalAt.localeCompare(b.arrivalAt);
+    return a.departureAt.localeCompare(b.departureAt);
+  });
+  const earliestDeparture = [...chains].sort((a, b) =>
+    a.departureAt.localeCompare(b.departureAt),
+  )[0];
   const cheapest = [...chains].sort((a, b) => a.totalPrice - b.totalPrice)[0];
   const transfers = chains.filter((chain) => chain.kind === 'transfer');
   const hubs = [...new Set(transfers.map((chain) => chain.hub).filter(Boolean))];
@@ -128,11 +137,48 @@ export function RouteSearch() {
                     : `Нашли ${chains.length} ${pluralize(chains.length, 'способ', 'способа', 'способов')} добраться`}
               </div>
               <div style={{ fontSize: 16, color: COLORS.inkSoft, lineHeight: 1.45 }}>
-                {summary ||
-                  `Собрали ${chains.length} ${pluralize(chains.length, 'вариант', 'варианта', 'вариантов')}${
-                    hubs.length ? ` через ${hubs.join(' или ')}` : ''
-                  }. Быстрее всего — на месте в ${earliest ? formatTime(earliest.arrivalAt) : ''}, дешевле всего — ${cheapest ? formatRub(cheapest.totalPrice) : ''}.`}
+                {[
+                  otherDay
+                    ? `В ${humanDay(date)} уехать не получается.`
+                    : `Прямых рейсов нет, но добраться можно.`,
+                  `Собрали ${chains.length} ${pluralize(chains.length, 'вариант', 'варианта', 'вариантов')}${hubs.length ? ` через ${hubs.join(' или ')}` : ''}.`,
+                  earliestDeparture
+                    ? `Раньше всего выезд в ${formatTime(earliestDeparture.departureAt)}, на месте в ${formatTime(earliestDeparture.arrivalAt)}.`
+                    : '',
+                  cheapest ? `Дешевле всего — ${formatRub(cheapest.totalPrice)}.` : '',
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
               </div>
+
+              {/* Уехать удалось только в другой день — значит ночевать
+                  придётся здесь. Ведём к гостиницам сразу, не заставляя
+                  человека искать блок самому. */}
+              {otherDay && stay && stay.hotels.length > 0 ? (
+                <button
+                  onClick={() => {
+                    document
+                      .getElementById(STAY_ANCHOR)
+                      ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }}
+                  style={{
+                    alignSelf: 'flex-start',
+                    marginTop: 6,
+                    height: 46,
+                    padding: '0 22px',
+                    border: 'none',
+                    borderRadius: 12,
+                    background: COLORS.accent,
+                    color: '#FFFFFF',
+                    fontFamily: 'inherit',
+                    fontSize: 15,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Посмотреть, где переночевать
+                </button>
+              ) : null}
             </div>
 
             <div
@@ -156,6 +202,9 @@ export function RouteSearch() {
                   borderRadius: 12,
                 }}
               >
+                <SortButton active={sort === 'departure'} onClick={() => setSort('departure')}>
+                  Раньше уеду
+                </SortButton>
                 <SortButton active={sort === 'arrival'} onClick={() => setSort('arrival')}>
                   Раньше приеду
                 </SortButton>
@@ -168,6 +217,8 @@ export function RouteSearch() {
             {sorted.map((chain, index) => (
               <ChainCard key={`${chain.hub ?? 'direct'}-${chain.departureAt}-${index}`} chain={chain} />
             ))}
+
+            {stay ? <HotelList stay={stay} anchorId={STAY_ANCHOR} /> : null}
           </>
         ) : null}
 
@@ -211,6 +262,8 @@ export function RouteSearch() {
             >
               Посмотреть следующий день
             </button>
+
+            {stay ? <HotelList stay={stay} anchorId={STAY_ANCHOR} /> : null}
           </div>
         ) : null}
 
