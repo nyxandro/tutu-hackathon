@@ -173,8 +173,8 @@ function Layover({ chain }: { chain: RouteChain }) {
       />
       <span style={{ fontSize: 15, color: COLORS.inkSoft, lineHeight: 1.45 }}>
         {tight
-          ? `Пересадка ${chain.layoverMin} минут — впритык. Опоздание первого рейса ломает стыковку.`
-          : `Пересадка в ${hubIn(chain.hub ?? '')} — ${formatDur(chain.layoverMin ?? 0)}`}
+          ? `Пересадка всего ${chain.layoverMin} минут. Если первый рейс опоздает, стыковка сломается.`
+          : `Пересадка в ${hubIn(chain.hub ?? '')}, ${formatDur(chain.layoverMin ?? 0)}`}
       </span>
     </div>
   );

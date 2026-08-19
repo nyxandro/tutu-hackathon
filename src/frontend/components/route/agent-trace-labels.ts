@@ -54,15 +54,15 @@ export function describeResult(
   if (output.error === true || typeof output.error === 'string') {
     const byCode: Record<string, string> = {
       ORIGIN_DEAD_FOR_DATE: when
-        ? `${when} уехать не выйдет — смотрю следующий день`
-        : 'в этот день уехать не выйдет — смотрю следующий',
+        ? `${when} уехать не выйдет, смотрю следующий день`
+        : 'в этот день уехать не выйдет, смотрю следующий',
       DUPLICATE_REQUEST: 'уже проверяли этот маршрут',
-      SEARCH_BUDGET_SPENT: 'лимит запросов исчерпан — работаю с найденным',
-      DEADLINE_REACHED: 'время на поиск вышло — работаю с найденным',
+      SEARCH_BUDGET_SPENT: 'лимит запросов исчерпан, работаю с найденным',
+      DEADLINE_REACHED: 'время на поиск вышло, работаю с найденным',
       TUTU_RATE_LIMITED: 'Туту ограничил частоту запросов',
       TUTU_TIMEOUT: 'Туту не ответил вовремя',
       TUTU_UNAVAILABLE: 'Туту не ответил',
-      LEG_NOT_FOUND: 'плечо потерялось — собираю заново',
+      LEG_NOT_FOUND: 'плечо потерялось, собираю заново',
       LEGS_DO_NOT_MEET: 'это плечи разных маршрутов',
     };
 
@@ -98,7 +98,7 @@ export function describeResult(
       };
       const kinds = transports.map((t) => labels[String(t)] ?? String(t)).join(', ');
       const price = typeof output.cheapest_price === 'number' ? `, от ${Math.round(output.cheapest_price)} ₽` : '';
-      return { text: `${count} — ${kinds}${price}`, empty: false };
+      return { text: `${count} ${kinds ? `${kinds}` : 'рейсов'}${price}`, empty: false };
     }
 
     case 'suggest_hubs': {
@@ -106,7 +106,7 @@ export function describeResult(
       // Пустой справочник — не тупик: агент подберёт города сам, и следующим
       // шагом это видно. Прежний текст «городов не нашлось» пугал зря.
       if (hubs.length === 0) {
-        return { text: 'в справочнике нет — подберу города сам', empty: false };
+        return { text: 'в справочнике нет, подберу города сам', empty: false };
       }
       return { text: `проверю: ${hubs.join(', ')}`, empty: false };
     }
@@ -115,12 +115,12 @@ export function describeResult(
       if (!count) {
         return {
           text: when
-            ? `${when} рейсы по времени не сходятся — стоит проверить другой день`
+            ? `${when} рейсы по времени не сходятся, стоит проверить другой день`
             : 'рейсы по времени не сходятся',
           empty: true,
         };
       }
-      return { text: `${count} — маршрут собран`, empty: false };
+      return { text: `собрали ${count}`, empty: false };
     }
 
     case 'search_hotels':

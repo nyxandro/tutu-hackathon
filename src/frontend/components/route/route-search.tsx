@@ -191,9 +191,9 @@ export function RouteSearch() {
                 }}
               >
                 {otherDay
-                  ? `${date === foundDates[0] ? '' : 'В этот день уехать нельзя — '}нашли маршрут на ${humanDay(foundDates[0])}`
+                  ? `${date === foundDates[0] ? '' : 'В этот день уехать нельзя, '}нашли маршрут на ${humanDay(foundDates[0])}`
                   : transfers.length === visible.length
-                    ? `Как уехать: ${applied?.origin ?? from} → ${applied?.destination ?? to}`
+                    ? `${applied?.origin ?? from} → ${applied?.destination ?? to}, как уехать`
                     : `Нашли ${visible.length} ${pluralize(visible.length, 'способ', 'способа', 'способов')} добраться`}
               </div>
               <div style={{ fontSize: 16, color: COLORS.inkSoft, lineHeight: 1.45 }}>
@@ -213,7 +213,7 @@ export function RouteSearch() {
                   earliestDeparture
                     ? `Раньше всего выезд в ${formatTime(earliestDeparture.departureAt)}, на месте в ${formatTime(earliestDeparture.arrivalAt)}.`
                     : '',
-                  cheapest ? `Дешевле всего — ${formatRub(cheapest.totalPrice)}.` : '',
+                  cheapest ? `Дешевле всего ${formatRub(cheapest.totalPrice)}.` : '',
                 ]
                   .filter(Boolean)
                   .join(' ')}
