@@ -1,14 +1,14 @@
 /**
- * Поле «Кто едет» в строке поиска: выбор числа взрослых пассажиров.
+ * Поле «Сколько вас» в строке поиска: число взрослых пассажиров с шагом ±1.
  *
  * Экспорты:
- * - TravelersPicker — поле с выпадающим списком от одного до MAX_TRAVELERS
+ * - TravelersPicker — поле со счётчиком от одного до MAX_TRAVELERS
  * - describeTravelers() — склонение «1 человек / 2 человека / 5 человек»
+ *   для подписей в других местах интерфейса
  */
 
 'use client';
 
-import { useState } from 'react';
 import { COLORS } from '@/frontend/design';
 import { MAX_TRAVELERS } from '@/modules/routing/config';
 
@@ -22,6 +22,44 @@ export function describeTravelers(count: number): string {
   return `${count} человек`;
 }
 
+function StepButton({
+  sign,
+  disabled,
+  onClick,
+}: {
+  sign: '−' | '+';
+  disabled: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={sign === '+' ? 'Добавить человека' : 'Убрать человека'}
+      style={{
+        width: 30,
+        height: 30,
+        flex: '0 0 30px',
+        border: 'none',
+        borderRadius: 9,
+        background: disabled ? COLORS.line : COLORS.accentSoft,
+        color: disabled ? COLORS.mutedSoft : COLORS.accent,
+        fontFamily: 'inherit',
+        fontSize: 17,
+        fontWeight: 600,
+        lineHeight: 1,
+        cursor: disabled ? 'default' : 'pointer',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      {sign}
+    </button>
+  );
+}
+
 export function TravelersPicker({
   value,
   onChange,
@@ -29,88 +67,41 @@ export function TravelersPicker({
   value: number;
   onChange: (count: number) => void;
 }) {
-  const [open, setOpen] = useState(false);
-  const options = Array.from({ length: MAX_TRAVELERS }, (_, index) => index + 1);
-
   return (
     <div
       style={{
         flex: '0 1 170px',
-        minWidth: 140,
-        position: 'relative',
+        minWidth: 150,
         borderRight: `1px solid ${COLORS.line}`,
+        minHeight: 72,
+        padding: '13px 16px',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        gap: 2,
       }}
     >
-      <button
-        type="button"
-        onClick={() => setOpen((prev) => !prev)}
-        style={{
-          width: '100%',
-          minHeight: 72,
-          border: 'none',
-          background: 'transparent',
-          padding: '13px 18px',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'flex-start',
-          gap: 2,
-          fontFamily: 'inherit',
-          cursor: 'pointer',
-          textAlign: 'left',
-        }}
-      >
-        <span style={{ fontSize: 12, color: COLORS.mutedSoft }}>Кто едет</span>
-        <span style={{ fontSize: 17, fontWeight: 500, color: COLORS.ink }}>
-          {describeTravelers(value)}
+      <span style={{ fontSize: 12, color: COLORS.mutedSoft }}>Сколько вас</span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <StepButton sign="−" disabled={value <= 1} onClick={() => onChange(value - 1)} />
+        <span
+          style={{
+            fontSize: 17,
+            fontWeight: 600,
+            color: COLORS.ink,
+            fontVariantNumeric: 'tabular-nums',
+            minWidth: 14,
+            textAlign: 'center',
+          }}
+        >
+          {value}
         </span>
-      </button>
-
-      {open ? (
-        <>
-          {/* Подложка ловит клик мимо списка: без неё он остаётся открытым. */}
-          <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 30 }} />
-          <div
-            style={{
-              position: 'absolute',
-              top: 'calc(100% + 8px)',
-              left: 0,
-              minWidth: 200,
-              zIndex: 31,
-              background: COLORS.surface,
-              borderRadius: 14,
-              boxShadow: '0 18px 44px rgba(21,12,86,.22)',
-              padding: 8,
-              display: 'flex',
-              flexDirection: 'column',
-            }}
-          >
-            {options.map((count) => (
-              <button
-                key={count}
-                type="button"
-                onClick={() => {
-                  onChange(count);
-                  setOpen(false);
-                }}
-                style={{
-                  border: 'none',
-                  background: count === value ? COLORS.accentSoft : 'transparent',
-                  color: count === value ? COLORS.accent : COLORS.ink,
-                  borderRadius: 10,
-                  padding: '10px 12px',
-                  fontFamily: 'inherit',
-                  fontSize: 15,
-                  fontWeight: count === value ? 600 : 500,
-                  textAlign: 'left',
-                  cursor: 'pointer',
-                }}
-              >
-                {describeTravelers(count)}
-              </button>
-            ))}
-          </div>
-        </>
-      ) : null}
+        <StepButton
+          sign="+"
+          disabled={value >= MAX_TRAVELERS}
+          onClick={() => onChange(value + 1)}
+        />
+      </div>
     </div>
   );
 }
