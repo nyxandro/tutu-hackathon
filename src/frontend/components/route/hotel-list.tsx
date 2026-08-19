@@ -1,16 +1,17 @@
 /**
- * Гостиницы на случай, когда уехать в нужный день не выходит: с адресом,
- * телефоном и ценой за всё проживание.
+ * Гостиницы на случай, когда уехать в нужный день не выходит. Товарные карточки
+ * с крупным фото: человек выбирает ночлег глазами, а не по строчке текста.
  *
  * Экспорты:
- * - HotelList — список гостиниц запасного плана
+ * - HotelList — сетка гостиниц запасного плана
  */
 
 'use client';
 
 import Image from 'next/image';
+import type { HotelOffer } from '@/modules/tutu/types';
 import type { StayOffer } from '@/frontend/hooks/use-agent-search';
-import { COLORS, formatRub } from '@/frontend/design';
+import { COLORS, formatRub, hubIn } from '@/frontend/design';
 import { pluralize } from '@/frontend/format';
 
 const MS_IN_DAY = 24 * 60 * 60 * 1000;
@@ -20,7 +21,7 @@ function nightsBetween(from: string, to: string): number {
   return Math.max(1, Math.round(diff / MS_IN_DAY));
 }
 
-function priceOf(hotel: { best_offer?: Record<string, unknown> }): number | undefined {
+function priceOf(hotel: HotelOffer): number | undefined {
   return (hotel.best_offer as { price?: { amount?: number } } | undefined)?.price?.amount;
 }
 
@@ -31,137 +32,168 @@ export function HotelList({ stay, anchorId }: { stay: StayOffer; anchorId: strin
   const nightsLabel = `${nights} ${pluralize(nights, 'ночь', 'ночи', 'ночей')}`;
 
   return (
-    <div
-      id={anchorId}
-      style={{
-        background: COLORS.surface,
-        borderRadius: 20,
-        boxShadow: '0 4px 18px rgba(21,12,86,.06)',
-        padding: '26px 28px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 16,
-        scrollMarginTop: 20,
-      }}
-    >
+    <div id={anchorId} style={{ display: 'flex', flexDirection: 'column', gap: 16, scrollMarginTop: 20 }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-        <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-.015em', color: COLORS.ink }}>
-          Где переночевать в {stay.city}
+        <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-.02em', color: COLORS.ink }}>
+          Где переночевать в {hubIn(stay.city)}
         </div>
-        <div style={{ fontSize: 14, color: COLORS.muted }}>
+        <div style={{ fontSize: 15, color: COLORS.muted }}>
           Нужно {nightsLabel} — цены за всё проживание
         </div>
       </div>
 
-      {stay.hotels.map((hotel, index) => {
-        const price = priceOf(hotel);
-        const photo = hotel.photos?.[0];
-        const map = hotel.fullAddress
-          ? `https://yandex.ru/maps/?text=${encodeURIComponent(hotel.fullAddress)}`
-          : undefined;
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+          gap: 16,
+        }}
+      >
+        {stay.hotels.map((hotel, index) => (
+          <HotelCard key={hotel.hotel_id ?? index} hotel={hotel} nightsLabel={nightsLabel} />
+        ))}
+      </div>
+    </div>
+  );
+}
 
-        return (
-          <div
-            key={hotel.hotel_id ?? index}
+function HotelCard({ hotel, nightsLabel }: { hotel: HotelOffer; nightsLabel: string }) {
+  const price = priceOf(hotel);
+  const photo = hotel.photos?.[0];
+  const address = hotel.fullAddress ?? hotel.address;
+  const map = address ? `https://yandex.ru/maps/?text=${encodeURIComponent(address)}` : undefined;
+
+  return (
+    <div
+      style={{
+        background: COLORS.surface,
+        borderRadius: 18,
+        boxShadow: '0 4px 18px rgba(21,12,86,.06)',
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+    >
+      {/* Фото крупное: ночлег выбирают глазами, а миниатюра ничего не говорит */}
+      <div style={{ position: 'relative', width: '100%', aspectRatio: '4 / 3', background: COLORS.surfaceAlt }}>
+        {photo ? (
+          <Image
+            src={photo}
+            alt={hotel.name ?? 'Фото гостиницы'}
+            fill
+            sizes="(max-width: 640px) 100vw, 320px"
+            unoptimized
+            style={{ objectFit: 'cover' }}
+          />
+        ) : null}
+
+        {typeof hotel.rating === 'number' ? (
+          <span
             style={{
-              display: 'flex',
-              gap: 16,
-              padding: 16,
-              borderRadius: 14,
-              background: COLORS.surfaceAlt,
-              flexWrap: 'wrap',
+              position: 'absolute',
+              top: 10,
+              left: 10,
+              padding: '5px 10px',
+              borderRadius: 999,
+              background: 'rgba(21,12,86,.82)',
+              color: '#FFFFFF',
+              fontSize: 13,
+              fontWeight: 700,
             }}
           >
-            {photo ? (
-              <div
-                style={{
-                  position: 'relative',
-                  width: 96,
-                  height: 96,
-                  borderRadius: 10,
-                  overflow: 'hidden',
-                  flex: 'none',
-                }}
-              >
-                <Image src={photo} alt={hotel.name ?? 'Фото'} fill sizes="96px" unoptimized style={{ objectFit: 'cover' }} />
-              </div>
-            ) : null}
+            {hotel.rating.toFixed(1)}
+          </span>
+        ) : null}
+      </div>
 
-            <div style={{ flex: 1, minWidth: 200, display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <span style={{ fontSize: 16, fontWeight: 600, color: COLORS.ink }}>
-                {hotel.name ?? 'Гостиница'}
-                {hotel.stars ? ` ${'★'.repeat(hotel.stars)}` : ''}
-              </span>
+      <div style={{ padding: '16px 18px 18px', display: 'flex', flexDirection: 'column', gap: 8, flex: 1 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+          <span style={{ fontSize: 17, fontWeight: 600, color: COLORS.ink, lineHeight: 1.25 }}>
+            {hotel.name ?? 'Гостиница'}
+          </span>
+          {hotel.stars ? (
+            <span style={{ fontSize: 13, color: '#F5A623', letterSpacing: 1 }}>
+              {'★'.repeat(hotel.stars)}
+            </span>
+          ) : null}
+        </div>
 
-              <span style={{ fontSize: 14, color: COLORS.muted }}>
-                {typeof hotel.rating === 'number' ? `Рейтинг ${hotel.rating.toFixed(1)}` : 'Без оценок'}
-                {hotel.review_count ? ` · ${hotel.review_count} отзывов` : ''}
-              </span>
+        {address ? (
+          <span style={{ fontSize: 14, color: COLORS.muted, lineHeight: 1.4 }}>{address}</span>
+        ) : null}
 
-              {/* Полный адрес приходит только из деталей; если его нет,
-                  показываем расстояние до центра из результатов поиска. */}
-              <span style={{ fontSize: 14, color: COLORS.muted }}>
-                {hotel.fullAddress ?? hotel.address ?? ''}
-              </span>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', fontSize: 13 }}>
+          {hotel.review_count ? (
+            <span style={{ color: COLORS.mutedSoft }}>{hotel.review_count} отзывов</span>
+          ) : null}
+          {hotel.checkInTime ? (
+            <span style={{ color: COLORS.mutedSoft }}>заезд с {hotel.checkInTime.slice(0, 5)}</span>
+          ) : null}
+          {hotel.phones?.length ? (
+            <a
+              href={`tel:${hotel.phones[0].replace(/[^\d+]/g, '')}`}
+              style={{ color: COLORS.accent, textDecoration: 'none' }}
+            >
+              {hotel.phones[0]}
+            </a>
+          ) : null}
+          {map ? (
+            <a href={map} target="_blank" rel="noopener noreferrer" style={{ color: COLORS.accent, textDecoration: 'none' }}>
+              На карте
+            </a>
+          ) : null}
+        </div>
 
-              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', fontSize: 13 }}>
-                {hotel.phones?.length ? (
-                  <a href={`tel:${hotel.phones[0].replace(/[^\d+]/g, '')}`} style={{ color: COLORS.accent, textDecoration: 'none' }}>
-                    {hotel.phones[0]}
-                  </a>
-                ) : null}
-                {hotel.checkInTime ? (
-                  <span style={{ color: COLORS.mutedSoft }}>заезд с {hotel.checkInTime.slice(0, 5)}</span>
-                ) : null}
-                {map ? (
-                  <a href={map} target="_blank" rel="noopener noreferrer" style={{ color: COLORS.accent, textDecoration: 'none' }}>
-                    На карте
-                  </a>
-                ) : null}
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8 }}>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                <span
-                  style={{
-                    fontSize: 18,
-                    fontWeight: 600,
-                    fontVariantNumeric: 'tabular-nums',
-                    color: COLORS.ink,
-                  }}
-                >
-                  {typeof price === 'number' ? formatRub(price) : '—'}
-                </span>
-                <span style={{ fontSize: 12, color: COLORS.mutedSoft }}>за {nightsLabel}</span>
-              </div>
-
-              {hotel.checkout_url ? (
-                <a
-                  href={hotel.checkout_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    height: 44,
-                    padding: '0 20px',
-                    borderRadius: 10,
-                    background: COLORS.accentSoft,
-                    color: '#3B2CA8',
-                    fontSize: 15,
-                    fontWeight: 600,
-                    textDecoration: 'none',
-                  }}
-                >
-                  Забронировать
-                </a>
-              ) : null}
-            </div>
+        <div
+          style={{
+            marginTop: 'auto',
+            paddingTop: 12,
+            display: 'flex',
+            alignItems: 'flex-end',
+            justifyContent: 'space-between',
+            gap: 12,
+          }}
+        >
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <span
+              style={{
+                fontSize: 22,
+                fontWeight: 700,
+                fontVariantNumeric: 'tabular-nums',
+                letterSpacing: '-.015em',
+                color: COLORS.ink,
+              }}
+            >
+              {typeof price === 'number' ? formatRub(price) : '—'}
+            </span>
+            <span style={{ fontSize: 12, color: COLORS.mutedSoft }}>за {nightsLabel}</span>
           </div>
-        );
-      })}
+
+          {hotel.checkout_url ? (
+            <a
+              href={hotel.checkout_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                height: 44,
+                padding: '0 20px',
+                borderRadius: 10,
+                background: COLORS.accent,
+                color: '#FFFFFF',
+                fontSize: 15,
+                fontWeight: 600,
+                textDecoration: 'none',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              Забронировать
+            </a>
+          ) : null}
+        </div>
+      </div>
     </div>
   );
 }
