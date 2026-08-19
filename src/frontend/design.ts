@@ -32,6 +32,7 @@ export const COLORS = {
   errorInk: '#7A1F14',
   error: '#E0402F',
   dash: '#C8C3F0',
+  success: '#1FA971',
 } as const;
 
 export const TRANSPORT_LABELS: Record<string, string> = {

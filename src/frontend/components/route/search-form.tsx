@@ -19,7 +19,7 @@ export function SearchForm({
   date,
   showExamples,
   constraints,
-  modes,
+  excluded,
   onFrom,
   onTo,
   onDate,
@@ -43,7 +43,7 @@ export function SearchForm({
   onExample: (example: { origin: string; destination: string }) => void;
   constraints: Record<string, boolean>;
   onConstraint: (key: string) => void;
-  modes: string[];
+  excluded: string[];
   onMode: (key: string) => void;
   onDetect: () => void;
   detecting: boolean;
@@ -123,7 +123,7 @@ export function SearchForm({
             <button
               type="submit"
               style={{
-                flex: '0 0 210px',
+                flex: '0 0 170px',
                 minHeight: 72,
                 padding: '0 20px',
                 border: 'none',
@@ -133,10 +133,11 @@ export function SearchForm({
                 fontFamily: 'inherit',
                 fontSize: 17,
                 fontWeight: 600,
+                lineHeight: 1.15,
                 cursor: 'pointer',
               }}
             >
-              Найти способы добраться
+              Подобрать
             </button>
           </form>
 
@@ -155,26 +156,24 @@ export function SearchForm({
 
             <div style={{ display: 'flex', gap: 6 }}>
               {TRANSPORT_MODES.map((mode) => {
-                const picked = modes.includes(mode.key);
-                // Пока не выбрано ничего, ищем любым транспортом — значит
-                // исключённых нет и крестики рисовать не за что.
-                const excluded = modes.length > 0 && !picked;
+                // По умолчанию включены все виды: человек выключает лишнее,
+                // а не собирает список с нуля — так быстрее в срочной ситуации.
+                const on = !excluded.includes(mode.key);
 
                 return (
                   <button
                     key={mode.key}
                     onClick={() => onMode(mode.key)}
-                    title={excluded ? `${mode.label} — исключён` : mode.label}
+                    title={on ? mode.label : `${mode.label} — не искать`}
                     aria-label={mode.label}
-                    aria-pressed={picked}
+                    aria-pressed={on}
                     style={{
-                      position: 'relative',
                       width: 36,
                       height: 32,
                       border: 'none',
                       borderRadius: 9,
-                      background: excluded ? COLORS.surface : picked ? COLORS.accentSoft : COLORS.headerChip,
-                      color: excluded ? COLORS.faint : picked ? COLORS.ink : COLORS.chipText,
+                      background: COLORS.headerChip,
+                      color: on ? COLORS.success : COLORS.faint,
                       cursor: 'pointer',
                       display: 'inline-flex',
                       alignItems: 'center',
@@ -182,34 +181,10 @@ export function SearchForm({
                       fontFamily: "'Material Symbols Rounded'",
                       fontSize: 18,
                       lineHeight: 1,
+                      transition: 'color .15s ease',
                     }}
                   >
                     {TRANSPORT_ICONS[mode.key] ?? 'help'}
-
-                    {excluded ? (
-                      <span
-                        aria-hidden
-                        style={{
-                          position: 'absolute',
-                          top: -5,
-                          right: -5,
-                          width: 16,
-                          height: 16,
-                          borderRadius: 999,
-                          background: COLORS.surface,
-                          color: COLORS.accent,
-                          fontFamily: "'Material Symbols Rounded'",
-                          fontSize: 13,
-                          lineHeight: 1,
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          boxShadow: '0 1px 4px rgba(21,12,86,.3)',
-                        }}
-                      >
-                        close
-                      </span>
-                    ) : null}
                   </button>
                 );
               })}

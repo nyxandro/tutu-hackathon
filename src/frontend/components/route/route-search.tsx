@@ -12,7 +12,7 @@
 'use client';
 
 import { useState } from 'react';
-import { NIGHT_FROM_HOUR, NIGHT_TO_HOUR } from '@/frontend/config';
+import { NIGHT_FROM_HOUR, NIGHT_TO_HOUR, TRANSPORT_MODES } from '@/frontend/config';
 import { COLORS, formatRub } from '@/frontend/design';
 import { formatTime, pluralize } from '@/frontend/format';
 import { useAgentSearch, type SearchQuery } from '@/frontend/hooks/use-agent-search';
@@ -51,13 +51,19 @@ export function RouteSearch() {
   const [sort, setSort] = useState<Sort>('departure');
   const [constraints, setConstraints] = useState<Record<string, boolean>>({});
   // Пустой список — искать любым транспортом; параметр тогда вовсе не уходит.
-  const [modes, setModes] = useState<string[]>([]);
+  // Храним исключённые: по умолчанию ищем всеми видами, человек выключает
+  // ненужные. В запрос уходят оставшиеся, а если выключенных нет — ничего.
+  const [excluded, setExcluded] = useState<string[]>([]);
 
   const { steps, chains, stay, summary, status, search } = useAgentSearch();
   const { detect, status: geoStatus, result: geoResult } = useNearestCity();
 
   function run(query: Omit<SearchQuery, 'modes'>) {
     if (!query.origin.trim() || !query.destination.trim()) return;
+    const modes =
+      excluded.length > 0
+        ? TRANSPORT_MODES.map((mode) => mode.key).filter((key) => !excluded.includes(key))
+        : undefined;
     void search({ ...query, modes });
   }
 
@@ -109,7 +115,7 @@ export function RouteSearch() {
         onDate={setDate}
         constraints={constraints}
         onConstraint={(key) => setConstraints((prev) => ({ ...prev, [key]: !prev[key] }))}
-        modes={modes}
+        excluded={excluded}
         detecting={geoStatus === 'asking'}
         detected={geoStatus === 'done'}
         detectError={
@@ -122,7 +128,9 @@ export function RouteSearch() {
           if (city) setFrom(city);
         }}
         onMode={(key) =>
-          setModes((prev) => (prev.includes(key) ? prev.filter((m) => m !== key) : [...prev, key]))
+          setExcluded((prev) =>
+            prev.includes(key) ? prev.filter((m) => m !== key) : [...prev, key],
+          )
         }
         onSearch={() => run({ origin: from, destination: to, date })}
         onExample={(example) => {
