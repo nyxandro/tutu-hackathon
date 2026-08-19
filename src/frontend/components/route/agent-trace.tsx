@@ -23,6 +23,15 @@ export type TraceStep = {
   empty?: boolean;
 };
 
+/**
+ * Пока агент работает, блок обведён бегущей кромкой: экран должен выглядеть
+ * живым, а не зависшим. Когда поиск закончен, обёртка исчезает вместе с ней.
+ */
+function LiveShell({ live, children }: { live: boolean; children: React.ReactNode }) {
+  if (!live) return <>{children}</>;
+  return <div className="agent-live">{children}</div>;
+}
+
 export function AgentTrace({ steps, done }: { steps: TraceStep[]; done: boolean }) {
   const [collapsed, setCollapsed] = useState(false);
 
@@ -42,17 +51,17 @@ export function AgentTrace({ steps, done }: { steps: TraceStep[]; done: boolean 
     if (done) return null;
 
     return (
-      <div
-        style={{
-          background: COLORS.surface,
-          borderRadius: 20,
-          boxShadow: '0 4px 18px rgba(21,12,86,.06)',
-          padding: '24px 28px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 14,
-        }}
-      >
+      <LiveShell live>
+        <div
+          style={{
+            background: COLORS.surface,
+            borderRadius: 19,
+            padding: '24px 28px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 14,
+          }}
+        >
         <span
           style={{
             width: 20,
@@ -64,28 +73,30 @@ export function AgentTrace({ steps, done }: { steps: TraceStep[]; done: boolean 
             animation: 'route-spin .9s linear infinite',
           }}
         />
-        <span style={{ fontSize: 16, color: COLORS.ink }}>
-          Агент изучает варианты на выбранную дату
-        </span>
-      </div>
+          <span style={{ fontSize: 16, color: COLORS.ink }}>
+            Агент изучает варианты на выбранную дату
+          </span>
+        </div>
+      </LiveShell>
     );
   }
 
   const found = steps.filter((step) => step.result && !step.empty).length;
 
   return (
-    <div
-      style={{
-        background: COLORS.surface,
-        borderRadius: 20,
-        boxShadow: '0 4px 18px rgba(21,12,86,.06)',
-        padding: collapsed ? '18px 28px' : '24px 28px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: collapsed ? 0 : 14,
-        transition: 'padding .35s ease, gap .35s ease',
-      }}
-    >
+    <LiveShell live={!done}>
+      <div
+        style={{
+          background: COLORS.surface,
+          borderRadius: done ? 20 : 19,
+          boxShadow: done ? '0 4px 18px rgba(21,12,86,.06)' : undefined,
+          padding: collapsed ? '18px 28px' : '24px 28px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: collapsed ? 0 : 14,
+          transition: 'padding .35s ease, gap .35s ease',
+        }}
+      >
       <button
         type="button"
         onClick={() => setCollapsed((prev) => !prev)}
@@ -182,8 +193,9 @@ export function AgentTrace({ steps, done }: { steps: TraceStep[]; done: boolean 
             })}
           </div>
         </div>
+        </div>
       </div>
-    </div>
+    </LiveShell>
   );
 }
 

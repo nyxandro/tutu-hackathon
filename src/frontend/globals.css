@@ -13,3 +13,49 @@ body {
     transform: rotate(360deg);
   }
 }
+
+/* Бегущий по краю блока «ток», пока агент работает: конический градиент
+   вращается под содержимым, наружу видна только кромка в 1,5 пикселя. */
+.agent-live {
+  position: relative;
+  border-radius: 20px;
+  padding: 1.5px;
+  overflow: hidden;
+  box-shadow: 0 4px 18px rgba(21, 12, 86, 0.06);
+}
+
+.agent-live::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 200%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%) rotate(0turn);
+  background: conic-gradient(
+    transparent 0deg 288deg,
+    rgba(110, 86, 248, 0.22) 320deg,
+    #8a78fa 346deg,
+    #6e56f8 360deg
+  );
+  animation: route-current 2.6s linear infinite;
+}
+
+.agent-live > * {
+  position: relative;
+  z-index: 1;
+}
+
+@keyframes route-current {
+  to {
+    transform: translate(-50%, -50%) rotate(1turn);
+  }
+}
+
+/* Мигание раздражает и мешает читать: при отключённой анимации просто рамка. */
+@media (prefers-reduced-motion: reduce) {
+  .agent-live::before {
+    animation: none;
+    background: #8a78fa;
+  }
+}
