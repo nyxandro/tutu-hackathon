@@ -32,6 +32,13 @@ export function canonicalCity(value: string): string | null {
   return ALL_CITIES.find((city) => normalize(city.n) === needle)?.n ?? null;
 }
 
+/** Один ли это город: сравниваем по написанию из справочника, а не по вводу. */
+export function sameCityName(first: string, second: string): boolean {
+  const left = canonicalCity(first);
+  const right = canonicalCity(second);
+  return left !== null && left === right;
+}
+
 /**
  * Город принимается, только если он есть в справочнике: MCP Туту ищет по
  * названию, и на выдуманном городе поиск молча вернёт пустоту вместо ошибки.
@@ -133,6 +140,7 @@ export function CityInput({
   detecting,
   detected,
   detectError,
+  error,
 }: {
   label: string;
   value: string;
@@ -146,6 +154,8 @@ export function CityInput({
   detected?: boolean;
   /** Текст ошибки: показывается всплывашкой над полем. */
   detectError?: string | null;
+  /** Ошибка от формы: показывается под полем так же, как своя. */
+  error?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [errorOpen, setErrorOpen] = useState(false);
@@ -164,6 +174,7 @@ export function CityInput({
   }
 
   const unknown = dirty && value.trim().length > 0 && !isKnownCity(value);
+  const problem = unknown ? 'Выберите город из списка' : error;
 
   return (
     <div
@@ -242,7 +253,7 @@ export function CityInput({
             outline: 'none',
             fontSize: 17,
             fontWeight: 500,
-            color: detecting ? COLORS.mutedSoft : unknown ? '#E0402F' : COLORS.ink,
+            color: detecting ? COLORS.mutedSoft : problem ? '#E0402F' : COLORS.ink,
             background: 'transparent',
             padding: 0,
             width: '100%',
@@ -251,7 +262,7 @@ export function CityInput({
         />
       </label>
 
-      {unknown ? (
+      {problem ? (
         <span
           style={{
             position: 'absolute',
@@ -263,7 +274,7 @@ export function CityInput({
             pointerEvents: 'none',
           }}
         >
-          Выберите город из списка
+          {problem}
         </span>
       ) : null}
 

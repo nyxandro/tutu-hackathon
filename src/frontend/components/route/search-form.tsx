@@ -12,7 +12,7 @@ import { useState } from 'react';
 
 import { TRANSPORT_MODES, TRAVEL_CONSTRAINTS } from '@/frontend/config';
 import { COLORS, TRANSPORT_ICONS } from '@/frontend/design';
-import { CityInput, isKnownCity } from '@/frontend/components/route/city-input';
+import { CityInput, isKnownCity, sameCityName } from '@/frontend/components/route/city-input';
 import { DatePicker } from '@/frontend/components/route/date-picker';
 import { TravelersPicker } from '@/frontend/components/route/travelers-picker';
 
@@ -61,9 +61,12 @@ export function SearchForm({
   // с выдачей, — иначе непонятно, почему вариантов стало меньше.
   const [hintFor, setHintFor] = useState<string | null>(null);
 
-  // Оба города обязаны быть из справочника: на выдуманном названии MCP Туту
+  // Оба города обязаны быть из справочника. На выдуманном названии MCP Туту
   // молча вернёт пустоту, и человек решит, что рейсов нет.
-  const ready = isKnownCity(from) && isKnownCity(to);
+  // Совпадающие города тоже не пропускаем: искать дорогу из Москвы в Москву
+  // бессмысленно, а Туту на такой запрос отвечает пустотой без объяснений.
+  const sameCity = isKnownCity(from) && isKnownCity(to) && sameCityName(from, to);
+  const ready = isKnownCity(from) && isKnownCity(to) && !sameCity;
 
   return (
     <div
@@ -167,7 +170,13 @@ export function SearchForm({
               detected={detected}
               detectError={detectError}
             />
-            <CityInput label="Куда" value={to} onChange={onTo} placeholder="Углич" />
+            <CityInput
+              label="Куда"
+              value={to}
+              onChange={onTo}
+              placeholder="Углич"
+              error={sameCity ? 'Тот же город, что и в начале' : undefined}
+            />
 
             <DatePicker value={date} onChange={onDate} />
 
