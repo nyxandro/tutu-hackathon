@@ -146,23 +146,26 @@ rate limit Туту — повтор поиска отдаётся из кэша
 
 ## Архитектура
 
-Код разложен по модулям — по смыслу, а не по типу файла. Зависимости
-однонаправленные: `agent` → `routing` → `tutu`.
+Весь код в `src/`, в корне только конфигурация. Интерфейс — одной папкой,
+логика — модулями. Зависимости однонаправленные: `agent` → `routing` → `tutu`.
 
 ```
-modules/tutu/client.ts        подключение к mcp.tutu.ru, кэш, обёртка инструментов
-modules/tutu/types.ts         типы ответов Туту (нужны и клиенту)
-modules/tutu/config.ts        адрес сервера, TTL кэша, лимиты для модели
-modules/routing/builder.ts    ядро: узлы, оба плеча, стыковки, запасной план
-modules/routing/hubs.ts       справочник «регион → центр»; регион даёт MCP
-modules/routing/hub-suggest.ts подсказка городов моделью
-modules/routing/config.ts     запас на пересадку, границы перебора
-modules/agent/                агентный цикл (в работе)
-app/                          роутинг Next: страница и API, тонкие
-components/route/             интерфейс — здесь баллы за UX
-lib/                          общее: конфиг интерфейса, палитра, форматтеры, Prisma
-data/                         справочник городов для подсказок
-fixtures/                     настоящие ответы Туту для разработки и прогрева
+src/app/                       роутинг Next: страница и API, тонкие
+src/frontend/                  всё, что видно в браузере
+  components/route/              форма, календарь, карточки, гостиницы
+  design.ts, format.ts           палитра и форматтеры
+  config.ts, globals.css         константы интерфейса и стили
+src/modules/tutu/              интеграция с MCP Туту
+  client.ts                      подключение, кэш, обёртка инструментов
+  types.ts, config.ts            типы ответов и настройки
+  fixtures/                      настоящие ответы Туту для прогрева кэша
+src/modules/routing/           домен маршрутов
+  builder.ts                     узлы, плечи, стыковки, запасной план
+  hubs.ts, hub-suggest.ts        справочник регионов и подсказка модели
+  cities.json, config.ts         города для подсказок, запас на пересадку
+src/modules/agent/             агентный цикл (в работе)
+src/lib/                       клиент Prisma
+scripts/                       прогрев кэша, просмотр кэша, поиск из консоли, smoke
 ```
 
 Слоёв `domain/`/`infra/`/`api/` внутри модулей нет осознанно: на трёх с половиной
@@ -198,3 +201,13 @@ const tools = await client.tools();
 **Страховка на трек «оптимизация инструментов»:** если задание окажется про улучшение самого MCP,
 `lib/mcp.ts` разворачивается в собственный MCP-сервер-прокси на `/api/mcp` поверх Туту,
 а фронт при этом не выбрасывается.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

@@ -9,9 +9,9 @@
 'use client';
 
 import { useMemo, useRef, useState } from 'react';
-import cities from '@/data/russian-cities.json';
-import { CITY_SUGGESTIONS_LIMIT } from '@/lib/config';
-import { COLORS } from '@/lib/design';
+import cities from '@/modules/routing/cities.json';
+import { CITY_SUGGESTIONS_LIMIT } from '@/frontend/config';
+import { COLORS } from '@/frontend/design';
 
 type City = { n: string; r: string; p: number };
 

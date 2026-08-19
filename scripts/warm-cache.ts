@@ -12,10 +12,10 @@ import 'dotenv/config';
 import { readFileSync, readdirSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { join } from 'node:path';
-import { prisma } from '../lib/db';
-import { WARM_CACHE_TTL_MS } from '../modules/tutu/config';
+import { prisma } from '../src/lib/db';
+import { WARM_CACHE_TTL_MS } from '../src/modules/tutu/config';
 
-const FIXTURES_DIR = join(process.cwd(), 'fixtures');
+const FIXTURES_DIR = join(process.cwd(), 'modules', 'tutu', 'fixtures');
 
 /** Какому вызову соответствует каждый файл. Аргументы должны совпадать с боевыми. */
 const FIXTURE_CALLS: Record<string, { tool: string; args: Record<string, unknown> }> = {

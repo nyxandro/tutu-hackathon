@@ -4,8 +4,8 @@
  */
 
 import 'dotenv/config';
-import { buildRoutes } from '../modules/routing/builder';
-import { prisma } from '../lib/db';
+import { buildRoutes } from '../src/modules/routing/builder';
+import { prisma } from '../src/lib/db';
 
 function time(iso: string) {
   return new Date(iso).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Moscow' });

@@ -3,7 +3,7 @@
  * когда прямого билета нет.
  */
 
-import { RouteSearch } from '@/components/route/route-search';
+import { RouteSearch } from '@/frontend/components/route/route-search';
 
 export const dynamic = 'force-dynamic';
 

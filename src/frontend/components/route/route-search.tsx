@@ -10,12 +10,12 @@
 
 import { useEffect, useRef, useState } from 'react';
 import type { RouteChain, RouteSearchResult } from '@/modules/routing/builder';
-import { ROUTE_EXAMPLES, SEARCH_STAGE_MS } from '@/lib/config';
-import { COLORS, formatRub } from '@/lib/design';
-import { formatTime, pluralize } from '@/lib/format';
-import { ChainCard } from '@/components/route/chain-card';
-import { HotelList } from '@/components/route/hotel-list';
-import { SearchForm } from '@/components/route/search-form';
+import { ROUTE_EXAMPLES, SEARCH_STAGE_MS } from '@/frontend/config';
+import { COLORS, formatRub } from '@/frontend/design';
+import { formatTime, pluralize } from '@/frontend/format';
+import { ChainCard } from '@/frontend/components/route/chain-card';
+import { HotelList } from '@/frontend/components/route/hotel-list';
+import { SearchForm } from '@/frontend/components/route/search-form';
 
 type View = 'empty' | 'loading' | 'results' | 'none' | 'error';
 type Sort = 'arrival' | 'price';

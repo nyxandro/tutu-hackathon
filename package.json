@@ -12,12 +12,10 @@
     "migrate": "prisma migrate dev",
     "generate": "prisma generate",
     "studio": "prisma studio",
-    "mcp:probe": "tsx scripts/probe-mcp.ts",
     "smoke": "tsx scripts/smoke.ts",
     "cache": "tsx scripts/cache.ts",
     "warm": "tsx scripts/warm-cache.ts",
-    "route": "tsx scripts/try-route.ts",
-    "hubs": "tsx scripts/try-hubs.ts"
+    "route": "tsx scripts/try-route.ts"
   },
   "dependencies": {
     "@ai-sdk/mcp": "^2.0.32",

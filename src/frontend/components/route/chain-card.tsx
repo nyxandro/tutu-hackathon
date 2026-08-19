@@ -16,8 +16,8 @@ import {
   formatDur,
   formatRub,
   hubIn,
-} from '@/lib/design';
-import { formatDate, formatTime } from '@/lib/format';
+} from '@/frontend/design';
+import { formatDate, formatTime } from '@/frontend/format';
 
 function Icon({ name, size = 20, color }: { name: string; size?: number; color?: string }) {
   return (

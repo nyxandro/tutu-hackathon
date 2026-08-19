@@ -6,7 +6,7 @@
  */
 
 import 'dotenv/config';
-import { prisma } from '../lib/db';
+import { prisma } from '../src/lib/db';
 
 async function main() {
   const rows = await prisma.mcpCache.findMany({

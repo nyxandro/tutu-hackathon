@@ -9,10 +9,10 @@
 'use client';
 
 import { useState } from 'react';
-import { ROUTE_EXAMPLES, TRAVEL_CONSTRAINTS } from '@/lib/config';
-import { COLORS } from '@/lib/design';
-import { CityInput } from '@/components/route/city-input';
-import { DatePicker } from '@/components/route/date-picker';
+import { ROUTE_EXAMPLES, TRAVEL_CONSTRAINTS } from '@/frontend/config';
+import { COLORS } from '@/frontend/design';
+import { CityInput } from '@/frontend/components/route/city-input';
+import { DatePicker } from '@/frontend/components/route/date-picker';
 
 export function SearchForm({
   from,

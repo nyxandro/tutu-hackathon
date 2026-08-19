@@ -9,8 +9,8 @@
 'use client';
 
 import type { StayFallback } from '@/modules/routing/builder';
-import { COLORS, formatRub } from '@/lib/design';
-import { pluralize } from '@/lib/format';
+import { COLORS, formatRub } from '@/frontend/design';
+import { pluralize } from '@/frontend/format';
 
 export function HotelList({ stay }: { stay: StayFallback }) {
   if (stay.hotels.length === 0) return null;

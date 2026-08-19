@@ -6,9 +6,9 @@
  */
 
 import 'dotenv/config';
-import { getTutuTools } from '../modules/tutu/client';
-import { extractList, type TutuToolPayload } from '../modules/tutu/types';
-import { prisma } from '../lib/db';
+import { getTutuTools } from '../src/modules/tutu/client';
+import { extractList, type TutuToolPayload } from '../src/modules/tutu/types';
+import { prisma } from '../src/lib/db';
 
 const SEARCH_ARGS = {
   origin: 'Москва',
