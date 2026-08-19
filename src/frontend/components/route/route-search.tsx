@@ -23,6 +23,7 @@ import { HotelList } from '@/frontend/components/route/hotel-list';
 import { HowItWorks } from '@/frontend/components/route/how-it-works';
 import { isKnownCity } from '@/frontend/components/route/city-input';
 import { SearchForm } from '@/frontend/components/route/search-form';
+import { SortSwitch } from '@/frontend/components/route/sort-switch';
 
 type Sort = 'departure' | 'arrival' | 'price';
 
@@ -265,25 +266,15 @@ export function RouteSearch() {
                   ? ` · ${hiddenByFilters} ${pluralize(hiddenByFilters, 'скрыт', 'скрыто', 'скрыто')} условиями`
                   : ''}
               </div>
-              <div
-                style={{
-                  display: 'inline-flex',
-                  padding: 4,
-                  gap: 4,
-                  background: COLORS.surface,
-                  borderRadius: 12,
-                }}
-              >
-                <SortButton active={sort === 'departure'} onClick={() => setSort('departure')}>
-                  Раньше уеду
-                </SortButton>
-                <SortButton active={sort === 'arrival'} onClick={() => setSort('arrival')}>
-                  Раньше приеду
-                </SortButton>
-                <SortButton active={sort === 'price'} onClick={() => setSort('price')}>
-                  Дешевле
-                </SortButton>
-              </div>
+              <SortSwitch
+                value={sort}
+                onChange={setSort}
+                options={[
+                  { key: 'departure', label: 'Раньше уеду' },
+                  { key: 'arrival', label: 'Раньше приеду' },
+                  { key: 'price', label: 'Дешевле' },
+                ]}
+              />
             </div>
 
             {sorted.map((chain, index) => (
@@ -409,31 +400,3 @@ export function RouteSearch() {
   );
 }
 
-function SortButton({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        padding: '9px 18px',
-        border: 'none',
-        borderRadius: 9,
-        background: active ? COLORS.accentSoft : COLORS.surface,
-        color: active ? COLORS.ink : COLORS.muted,
-        fontFamily: 'inherit',
-        fontSize: 15,
-        fontWeight: 600,
-        cursor: 'pointer',
-      }}
-    >
-      {children}
-    </button>
-  );
-}
