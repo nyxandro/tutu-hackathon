@@ -207,7 +207,7 @@ export function SearchForm({
               marginTop: 6,
             }}
           >
-            <span style={{ fontSize: 13, color: COLORS.mutedSoft }}>Выбранный транспорт</span>
+            <span style={{ fontSize: 13, color: COLORS.chipText }}>Выбранный транспорт</span>
 
             <div style={{ display: 'flex', gap: 6 }}>
               {TRANSPORT_MODES.map((mode) => {
@@ -227,7 +227,7 @@ export function SearchForm({
                       height: 32,
                       border: 'none',
                       borderRadius: 9,
-                      background: COLORS.headerChip,
+                      background: COLORS.accent,
                       color: on ? COLORS.success : COLORS.faint,
                       cursor: 'pointer',
                       display: 'inline-flex',
