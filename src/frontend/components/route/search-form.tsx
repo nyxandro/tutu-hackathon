@@ -8,6 +8,8 @@
 
 'use client';
 
+import { useState } from 'react';
+
 import { TRANSPORT_MODES, TRAVEL_CONSTRAINTS } from '@/frontend/config';
 import { COLORS, TRANSPORT_ICONS } from '@/frontend/design';
 import { CityInput, isKnownCity } from '@/frontend/components/route/city-input';
@@ -54,6 +56,10 @@ export function SearchForm({
   /** После запуска поиска шапка сжимается: место нужно результатам. */
   compact: boolean;
 }) {
+
+  // Какая пилюля сейчас под курсором: подсказка объясняет, что фильтр сделает
+  // с выдачей, — иначе непонятно, почему вариантов стало меньше.
+  const [hintFor, setHintFor] = useState<string | null>(null);
 
   // Оба города обязаны быть из справочника: на выдуманном названии MCP Туту
   // молча вернёт пустоту, и человек решит, что рейсов нет.
@@ -251,24 +257,52 @@ export function SearchForm({
             {TRAVEL_CONSTRAINTS.map((item) => {
               const active = Boolean(constraints[item.key]);
               return (
-                <button
-                  key={item.key}
-                  onClick={() => onConstraint(item.key)}
-                  aria-pressed={active}
-                  style={{
-                    height: 32,
-                    padding: '0 14px',
-                    border: 'none',
-                    borderRadius: 999,
-                    background: active ? COLORS.accentSoft : COLORS.headerChip,
-                    color: active ? COLORS.ink : COLORS.chipText,
-                    fontFamily: 'inherit',
-                    fontSize: 13,
-                    cursor: 'pointer',
-                  }}
-                >
-                  {item.label}
-                </button>
+                <div key={item.key} style={{ position: 'relative' }}>
+                  <button
+                    onClick={() => onConstraint(item.key)}
+                    onMouseEnter={() => setHintFor(item.key)}
+                    onMouseLeave={() => setHintFor(null)}
+                    onFocus={() => setHintFor(item.key)}
+                    onBlur={() => setHintFor(null)}
+                    aria-pressed={active}
+                    style={{
+                      height: 32,
+                      padding: '0 14px',
+                      border: 'none',
+                      borderRadius: 999,
+                      background: active ? COLORS.accentSoft : COLORS.headerChip,
+                      color: active ? COLORS.ink : COLORS.chipText,
+                      fontFamily: 'inherit',
+                      fontSize: 13,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {item.label}
+                  </button>
+
+                  {hintFor === item.key ? (
+                    <span
+                      role="tooltip"
+                      style={{
+                        position: 'absolute',
+                        top: 'calc(100% + 8px)',
+                        left: 0,
+                        zIndex: 20,
+                        width: 280,
+                        padding: '10px 12px',
+                        borderRadius: 10,
+                        background: COLORS.ink,
+                        color: '#FFFFFF',
+                        fontSize: 12.5,
+                        lineHeight: 1.4,
+                        boxShadow: '0 12px 30px rgba(21,12,86,.3)',
+                        pointerEvents: 'none',
+                      }}
+                    >
+                      {item.hint}
+                    </span>
+                  ) : null}
+                </div>
               );
             })}
           </div>
