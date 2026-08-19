@@ -71,6 +71,40 @@ export function useAgentSearch() {
     setStatus('done');
   }, []);
 
+  /**
+   * Догружает гостиницы, если уехать в запрошенный день не вышло. Агент про
+   * ночлег регулярно забывает — он занят билетами, — поэтому проверку делает
+   * код, а не промпт.
+   */
+  const ensureStay = useCallback(
+    async (query: SearchQuery, found: RouteChain[]) => {
+      if (found.length === 0) return;
+
+      const dates = [...new Set(found.map((chain) => chain.departureAt.slice(0, 10)))];
+      if (dates.includes(query.date)) return;
+
+      try {
+        const response = await fetch('/api/stay', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            city: query.origin,
+            checkIn: query.date,
+            // Ночуем до дня отъезда: столько ночей, сколько реально ждать.
+            checkOut: dates.sort()[0],
+          }),
+        });
+        if (!response.ok) return;
+
+        const data = (await response.json()) as StayOffer;
+        if (data.hotels?.length) setStay(data);
+      } catch {
+        // Гостиницы — дополнение к маршрутам: без них экран остаётся полезным.
+      }
+    },
+    [],
+  );
+
   const search = useCallback(
     async (query: SearchQuery) => {
       setSteps([]);
@@ -196,8 +230,9 @@ export function useAgentSearch() {
       }
 
       setStatus('done');
+      await ensureStay(query, collected);
     },
-    [runPlain],
+    [runPlain, ensureStay],
   );
 
   return { steps, chains, stay, summary, status, fellBack, search };
