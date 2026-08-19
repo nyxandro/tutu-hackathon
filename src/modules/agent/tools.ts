@@ -18,6 +18,13 @@ import { resolveHub } from '@/modules/routing/hubs';
 import { HOTEL_DETAILS_LIMIT, RESCUE_HOTELS_LIMIT, ROUTE_CHAINS_LIMIT } from '@/modules/routing/config';
 import type { AgentSession } from '@/modules/agent/session';
 import { toolError } from '@/modules/agent/errors';
+
+/** Сдвиг даты ГГГГ-ММ-ДД на сутки — для поиска второго плеча наутро. */
+function shiftDay(date: string, days: number): string {
+  const shifted = new Date(`${date}T00:00:00Z`);
+  shifted.setUTCDate(shifted.getUTCDate() + days);
+  return shifted.toISOString().slice(0, 10);
+}
 import { withRetry } from '@/modules/agent/retry';
 import type { HotelOffer } from '@/modules/tutu/types';
 
@@ -104,17 +111,29 @@ export function createAgentTools(session: AgentSession, collected: RouteChain[])
         'Найти рейсы между двумя городами на дату: поезда, автобусы, самолёты, ' +
         'электрички сразу. Возвращает идентификатор плеча и краткую сводку — ' +
         'полное расписание остаётся на сервере, для решения оно не нужно. ' +
-        'Идемпотентен: повторный вызов с теми же аргументами ничего не меняет.',
+        'Идемпотентен: повторный вызов с теми же аргументами ничего не меняет. ' +
+        'Для второго плеча (из города пересадки дальше) ставь also_next_day=true: ' +
+        'вечерний рейс приезжает в узел ночью, и уехать дальше получится только утром.',
       inputSchema: z.object({
         origin: z.string().describe('Город отправления, например «Москва»'),
         destination: z.string().describe('Город прибытия, например «Ярославль»'),
         date: z.string().describe('Дата в формате ГГГГ-ММ-ДД'),
+        also_next_day: z
+          .boolean()
+          .optional()
+          .describe(
+            'Искать ещё и на следующий день. Ставь true для второго плеча ' +
+              'маршрута с пересадкой, false для прямых рейсов и первого плеча.',
+          ),
       }),
-      execute: async ({ origin, destination, date }) => {
+      execute: async ({ origin, destination, date, also_next_day: alsoNextDay }) => {
         // Повтор одного и того же запроса — признак того, что модель сбилась.
         const repeated = [...session.legs.values()].find(
           (stored) =>
-            stored.origin === origin && stored.destination === destination && stored.date === date,
+            stored.origin === origin &&
+            stored.destination === destination &&
+            stored.date === date &&
+            stored.alsoNextDay === Boolean(alsoNextDay),
         );
         if (repeated) {
           return toolError(
@@ -141,9 +160,18 @@ export function createAgentTools(session: AgentSession, collected: RouteChain[])
         }
         session.searchCount += 1;
 
-        const attempt = await withRetry(`${origin} → ${destination}`, () =>
-          searchLeg(origin, destination, date, session.modes),
-        );
+        // Ночная стыковка: рейсы следующего дня нужны только второму плечу,
+        // иначе завтрашние прямые попадут в сегодняшний вердикт.
+        const attempt = await withRetry(`${origin} → ${destination}`, async () => {
+          const sameDay = await searchLeg(origin, destination, date, session.modes);
+          if (!alsoNextDay) return sameDay;
+          const nextDay = await searchLeg(origin, destination, shiftDay(date, 1), session.modes);
+          return {
+            ...sameDay,
+            offers: [...sameDay.offers, ...nextDay.offers],
+            failed: sameDay.failed && nextDay.failed,
+          };
+        });
 
         if (!attempt.ok) {
           return toolError(
@@ -168,7 +196,7 @@ export function createAgentTools(session: AgentSession, collected: RouteChain[])
           .filter((leg): leg is RouteLeg => leg !== null);
 
         const id = session.next();
-        session.legs.set(id, { id, origin, destination, date, legs });
+        session.legs.set(id, { id, origin, destination, date, legs, alsoNextDay: Boolean(alsoNextDay) });
 
         // Плечо «узел → цель» пустое означает, что узел бесполезен целиком:
         // помечаем сразу, чтобы агент не тратил на него второй запрос.

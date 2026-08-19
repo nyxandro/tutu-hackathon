@@ -20,6 +20,8 @@ export type StoredLeg = {
   destination: string;
   date: string;
   legs: RouteLeg[];
+  /** Искали ли ещё и на следующий день — так собираются ночные стыковки. */
+  alsoNextDay: boolean;
 };
 
 export type AgentSession = {

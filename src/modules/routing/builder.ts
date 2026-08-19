@@ -14,7 +14,7 @@
  * - RouteChain, RouteLeg, RouteSearchResult, StayFallback — типы результата
  */
 
-import { LAYOVER_DEFAULT_MIN, LAYOVER_MIN, MAX_HUBS_PER_SEARCH, RESCUE_HOTELS_LIMIT, ROUTE_CHAINS_LIMIT, STAY_LOOKAHEAD_DAYS } from '@/modules/routing/config';
+import { LAYOVER_DEFAULT_MIN, LAYOVER_MAX_MIN, LAYOVER_MIN, MAX_HUBS_PER_SEARCH, RESCUE_HOTELS_LIMIT, ROUTE_CHAINS_LIMIT, SECOND_LEG_EXTRA_DAYS, STAY_LOOKAHEAD_DAYS } from '@/modules/routing/config';
 import { callTutu } from '@/modules/tutu/client';
 import { resolveHub } from '@/modules/routing/hubs';
 import { suggestHubs } from '@/modules/routing/hub-suggest';
@@ -151,6 +151,9 @@ export function pairLegs(
       const required = layoverFor(a.transport, b.transport);
 
       if (layoverMin < required) continue;
+      // Ждать дольше суток бессмысленно: это уже не пересадка, а ночёвка,
+      // под которую у нас отдельный сценарий с гостиницей.
+      if (layoverMin > LAYOVER_MAX_MIN) continue;
 
       chains.push({
         kind: 'transfer',
@@ -365,10 +368,21 @@ export async function buildRoutes(
   // Узлы проверяем последовательно: параллельный залп по чужому API — прямой путь к 429.
   const chains: RouteChain[] = [];
   for (const { city: hub, source } of hubs) {
-    const [toHub, fromHub] = await Promise.all([
+    // Второе плечо ищем в день выезда и в следующие сутки: вечерний рейс
+    // приезжает в узел ночью, и дальше уехать можно только утром. Именно так
+    // собираются ночные стыковки, которые Туту показывает на сайте.
+    const secondLegDates = [date, ...Array.from(
+      { length: SECOND_LEG_EXTRA_DAYS },
+      (_, index) => shiftDate(date, index + 1),
+    )];
+    const [toHub, ...fromHubByDate] = await Promise.all([
       searchLeg(origin, hub, date),
-      searchLeg(hub, destination, date),
+      ...secondLegDates.map((legDate) => searchLeg(hub, destination, legDate)),
     ]);
+    const fromHub = {
+      offers: fromHubByDate.flatMap((result) => result.offers),
+      failed: fromHubByDate.every((result) => result.failed),
+    };
 
     const firstLegs = toHub.offers
       .map((offer) => toLeg(offer, origin, hub))
@@ -389,14 +403,22 @@ export async function buildRoutes(
 
     const paired = pairLegs(firstLegs, secondLegs, hub, source);
     if (paired.length === 0) {
-      notes.push(`Через ${hub} рейсы есть, но в этот день они не стыкуются по времени.`);
+      notes.push(`Через ${hub} рейсы есть, но по времени они не стыкуются — ни в этот день, ни утром следующего.`);
     }
     chains.push(...paired);
   }
 
-  result.transfers = dedupe(chains)
-    .sort((a, b) => a.arrivalAt.localeCompare(b.arrivalAt))
-    .slice(0, ROUTE_CHAINS_LIMIT);
+  // Порядок выдачи — по времени прибытия: человеку, которому надо уехать,
+  // важнее приехать раньше. Но самый дешёвый вариант обязан быть виден, даже
+  // если он приезжает позже всех, — иначе выдача выглядит дороже, чем есть.
+  const ranked = dedupe(chains).sort((a, b) => a.arrivalAt.localeCompare(b.arrivalAt));
+  const shown = ranked.slice(0, ROUTE_CHAINS_LIMIT);
+  const cheapest = ranked.reduce<RouteChain | null>(
+    (best, chain) => (best === null || chain.totalPrice < best.totalPrice ? chain : best),
+    null,
+  );
+  if (cheapest && !shown.includes(cheapest)) shown[shown.length - 1] = cheapest;
+  result.transfers = shown.sort((a, b) => a.arrivalAt.localeCompare(b.arrivalAt));
 
   // Уехать не выходит вообще — предлагаем переночевать и уехать позже.
   if (result.transfers.length === 0) {
