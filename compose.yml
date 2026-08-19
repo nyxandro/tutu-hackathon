@@ -8,10 +8,16 @@ services:
     environment:
       DATABASE_URL: postgres://tutu:${DB_PASSWORD}@db:5432/tutu
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+      # Контейнер выходит в интернет с российского адреса, а OpenRouter такие
+      # адреса не обслуживает. Запросы к модели идут через туннель, к Туту —
+      # напрямую, там ограничений нет.
+      OPENROUTER_PROXY: socks5://tunnel:1080
       NODE_ENV: production
     depends_on:
       db:
         condition: service_healthy
+      tunnel:
+        condition: service_started
     # Миграции накатывает deploy.sh отдельным контейнером из стадии сборки:
     # в лёгком рантайм-образе нет зависимостей Prisma CLI, а тащить их туда
     # ради одной таблицы дороже, чем сделать отдельный шаг.
@@ -26,6 +32,16 @@ services:
       traefik.http.routers.tutu.entrypoints: websecure
       traefik.http.routers.tutu.tls.certresolver: letsencrypt
       traefik.http.services.tutu.loadbalancer.server.port: '3100'
+
+  # Выход в интернет для запросов к модели. Конфигурация лежит рядом,
+  # в tunnel/config.json, и содержит только исходящее соединение.
+  tunnel:
+    image: ghcr.io/xtls/xray-core:latest
+    container_name: kak-dobratsya-tunnel
+    restart: unless-stopped
+    volumes:
+      - ./tunnel/config.json:/etc/xray/config.json:ro
+    command: ['run', '-c', '/etc/xray/config.json']
 
   db:
     image: postgres:18-alpine

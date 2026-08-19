@@ -22,6 +22,7 @@ import { createSession } from '@/modules/agent/session';
 import { createAgentTools } from '@/modules/agent/tools';
 import type { RouteChain } from '@/modules/routing/builder';
 import { MAX_TRAVELERS } from '@/modules/routing/config';
+import { socksFetch } from '@/lib/socks-fetch';
 
 export const maxDuration = 180;
 
@@ -70,7 +71,12 @@ export async function POST(req: Request) {
   // модель их не пересказывает и потому не может исказить.
   const collected: RouteChain[] = [];
   const tools = createAgentTools(session, collected);
-  const openrouter = createOpenRouter({ apiKey });
+  // OpenRouter не отвечает российским адресам, поэтому на сервере запросы
+  // к модели идут через туннель. Переменной нет — ходим напрямую.
+  const openrouter = createOpenRouter({
+    apiKey,
+    fetch: socksFetch(process.env.OPENROUTER_PROXY, 'openrouter'),
+  });
 
   const searchPrompt =
     `Найди, как добраться: ${origin.trim()} → ${destination.trim()}, дата ${date.trim()}.` +

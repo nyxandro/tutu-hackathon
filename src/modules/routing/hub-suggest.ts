@@ -14,6 +14,7 @@
  */
 
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
+import { socksFetch } from '@/lib/socks-fetch';
 import { generateText } from 'ai';
 import { HUB_SUGGEST_MODEL, HUB_SUGGEST_TIMEOUT_MS, MAX_SUGGESTED_HUBS } from '@/modules/routing/config';
 
@@ -56,7 +57,7 @@ export async function suggestHubs(origin: string, destination: string): Promise<
   if (!apiKey) return [];
 
   try {
-    const openrouter = createOpenRouter({ apiKey });
+    const openrouter = createOpenRouter({ fetch: socksFetch(process.env.OPENROUTER_PROXY, 'openrouter'), apiKey });
     const { text } = await generateText({
       model: openrouter(HUB_SUGGEST_MODEL),
       system: SYSTEM_PROMPT,
