@@ -100,3 +100,6 @@ export const TRAVEL_CONSTRAINTS = [
   { key: 'night', label: 'Не подходит ночная поездка' },
   { key: 'lower', label: 'Нужны только нижние места' },
 ];
+
+// Сколько городов показываем в подсказках при вводе.
+export const CITY_SUGGESTIONS_LIMIT = 7;

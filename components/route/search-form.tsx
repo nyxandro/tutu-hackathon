@@ -11,17 +11,8 @@
 import { useState } from 'react';
 import { ROUTE_EXAMPLES, TRAVEL_CONSTRAINTS } from '@/lib/config';
 import { COLORS } from '@/lib/design';
-
-const MONTHS = [
-  'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
-  'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря',
-];
-
-function humanDate(iso: string): string {
-  const date = new Date(`${iso}T00:00:00`);
-  if (Number.isNaN(date.getTime())) return iso;
-  return `${date.getDate()} ${MONTHS[date.getMonth()]} ${date.getFullYear()}`;
-}
+import { CityInput } from '@/components/route/city-input';
+import { DatePicker } from '@/components/route/date-picker';
 
 export function SearchForm({
   from,
@@ -101,39 +92,10 @@ export function SearchForm({
               flexWrap: 'wrap',
             }}
           >
-            <Field label="Откуда" value={from} onChange={onFrom} placeholder="Москва" first />
-            <Field label="Куда" value={to} onChange={onTo} placeholder="Углич" />
+            <CityInput label="Откуда" value={from} onChange={onFrom} placeholder="Москва" first />
+            <CityInput label="Куда" value={to} onChange={onTo} placeholder="Углич" />
 
-            <label
-              style={{
-                flex: '0 1 210px',
-                minWidth: 170,
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'center',
-                gap: 2,
-                padding: '13px 18px',
-                borderRight: `1px solid ${COLORS.line}`,
-                cursor: 'pointer',
-              }}
-            >
-              <span style={{ fontSize: 12, color: COLORS.mutedSoft }}>Когда</span>
-              <span style={{ fontSize: 17, fontWeight: 500, color: COLORS.ink }}>
-                {humanDate(date)}
-              </span>
-              <input
-                type="date"
-                value={date}
-                onChange={(event) => onDate(event.target.value)}
-                style={{
-                  position: 'absolute',
-                  opacity: 0,
-                  width: 170,
-                  height: 60,
-                  cursor: 'pointer',
-                }}
-              />
-            </label>
+            <DatePicker value={date} onChange={onDate} />
 
             <button
               type="submit"
@@ -234,53 +196,5 @@ export function SearchForm({
         </div>
       </div>
     </div>
-  );
-}
-
-function Field({
-  label,
-  value,
-  onChange,
-  placeholder,
-  first,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  placeholder: string;
-  first?: boolean;
-}) {
-  return (
-    <label
-      style={{
-        flex: '1 1 0',
-        minWidth: 130,
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'center',
-        gap: 2,
-        padding: '13px 18px',
-        borderRight: `1px solid ${COLORS.line}`,
-        borderRadius: first ? '14px 0 0 14px' : undefined,
-      }}
-    >
-      <span style={{ fontSize: 12, color: COLORS.mutedSoft }}>{label}</span>
-      <input
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        placeholder={placeholder}
-        style={{
-          border: 'none',
-          outline: 'none',
-          fontSize: 17,
-          fontWeight: 500,
-          color: COLORS.ink,
-          background: 'transparent',
-          padding: 0,
-          width: '100%',
-          fontFamily: 'inherit',
-        }}
-      />
-    </label>
   );
 }
