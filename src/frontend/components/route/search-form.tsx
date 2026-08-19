@@ -27,6 +27,8 @@ export function SearchForm({
   onExample,
   onConstraint,
   onMode,
+  onDetect,
+  detecting,
 }: {
   from: string;
   to: string;
@@ -41,6 +43,8 @@ export function SearchForm({
   onConstraint: (key: string) => void;
   modes: string[];
   onMode: (key: string) => void;
+  onDetect: () => void;
+  detecting: boolean;
 }) {
 
   return (
@@ -97,7 +101,15 @@ export function SearchForm({
               flexWrap: 'wrap',
             }}
           >
-            <CityInput label="Откуда" value={from} onChange={onFrom} placeholder="Москва" first />
+            <CityInput
+              label="Откуда"
+              value={from}
+              onChange={onFrom}
+              placeholder="Москва"
+              first
+              onDetect={onDetect}
+              detecting={detecting}
+            />
             <CityInput label="Куда" value={to} onChange={onTo} placeholder="Углич" />
 
             <DatePicker value={date} onChange={onDate} />

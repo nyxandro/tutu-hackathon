@@ -16,6 +16,7 @@ import { NIGHT_FROM_HOUR, NIGHT_TO_HOUR } from '@/frontend/config';
 import { COLORS, formatRub } from '@/frontend/design';
 import { formatTime, pluralize } from '@/frontend/format';
 import { useAgentSearch, type SearchQuery } from '@/frontend/hooks/use-agent-search';
+import { useNearestCity } from '@/frontend/hooks/use-nearest-city';
 import { AgentTrace } from '@/frontend/components/route/agent-trace';
 import { ChainCard } from '@/frontend/components/route/chain-card';
 import { HotelList } from '@/frontend/components/route/hotel-list';
@@ -53,6 +54,7 @@ export function RouteSearch() {
   const [modes, setModes] = useState<string[]>([]);
 
   const { steps, chains, stay, summary, status, search } = useAgentSearch();
+  const { detect, status: geoStatus } = useNearestCity();
 
   function run(query: Omit<SearchQuery, 'modes'>) {
     if (!query.origin.trim() || !query.destination.trim()) return;
@@ -108,6 +110,11 @@ export function RouteSearch() {
         constraints={constraints}
         onConstraint={(key) => setConstraints((prev) => ({ ...prev, [key]: !prev[key] }))}
         modes={modes}
+        detecting={geoStatus === 'asking'}
+        onDetect={async () => {
+          const city = await detect();
+          if (city) setFrom(city);
+        }}
         onMode={(key) =>
           setModes((prev) => (prev.includes(key) ? prev.filter((m) => m !== key) : [...prev, key]))
         }

@@ -49,3 +49,14 @@ export const CITY_SUGGESTIONS_LIMIT = 7;
 
 // Через сколько после окончания поиска лента шагов сворачивается сама.
 export const TRACE_COLLAPSE_DELAY_MS = 1000;
+
+// Определение города по геопозиции: сколько ждём ответа браузера и на каком
+// расстоянии город ещё считается «тем самым».
+export const GEOLOCATION_TIMEOUT_MS = 8_000;
+export const NEAREST_CITY_MAX_KM = 150;
+
+// Крупный транспортный узел рядом важнее маленького города вплотную: из
+// аэропорта Шереметьево ближайший город — Лобня, но уезжают оттуда из Москвы.
+export const MAJOR_CITY_POPULATION = 300_000;
+export const HUB_CITY_POPULATION = 1_000_000;
+export const MAJOR_CITY_RADIUS_KM = 50;

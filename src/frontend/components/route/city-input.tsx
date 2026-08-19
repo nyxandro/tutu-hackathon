@@ -47,12 +47,17 @@ export function CityInput({
   placeholder,
   first,
   onChange,
+  onDetect,
+  detecting,
 }: {
   label: string;
   value: string;
   placeholder: string;
   first?: boolean;
   onChange: (value: string) => void;
+  /** Кнопка «определить мой город» — только у поля отправления. */
+  onDetect?: () => void;
+  detecting?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
@@ -82,6 +87,7 @@ export function CityInput({
           justifyContent: 'center',
           gap: 2,
           padding: '13px 18px',
+          paddingRight: onDetect ? 46 : 18,
           minHeight: 72,
         }}
       >
@@ -128,6 +134,36 @@ export function CityInput({
           }}
         />
       </label>
+
+      {onDetect ? (
+        <button
+          type="button"
+          onClick={onDetect}
+          title="Определить мой город"
+          aria-label="Определить мой город"
+          style={{
+            position: 'absolute',
+            right: 12,
+            top: '50%',
+            transform: 'translateY(-50%)',
+            width: 30,
+            height: 30,
+            border: 'none',
+            borderRadius: 8,
+            background: 'transparent',
+            color: detecting ? COLORS.faint : COLORS.accent,
+            cursor: detecting ? 'default' : 'pointer',
+            fontFamily: "'Material Symbols Rounded'",
+            fontSize: 20,
+            lineHeight: 1,
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          {detecting ? 'more_horiz' : 'my_location'}
+        </button>
+      ) : null}
 
       {suggestions.length > 0 ? (
         <div
