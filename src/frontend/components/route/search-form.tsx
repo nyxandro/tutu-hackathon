@@ -64,12 +64,20 @@ export function SearchForm({
           `linear-gradient(180deg, rgba(21,12,86,.82) 0%, rgba(21,12,86,.90) 100%), url('/bg.jpg')`,
         backgroundSize: 'cover',
         backgroundPosition: 'center 35%',
-        padding: compact ? '18px 24px 24px' : '56px 24px 64px',
-        transition: 'padding .45s cubic-bezier(.4,0,.2,1)',
+        padding: compact ? '18px 24px 24px' : '64px 24px 76px',
+        // До первого поиска экран отдан обложке целиком: она объясняет, куда
+        // человек попал. С началом поиска высота схлопывается — место нужно
+        // результатам, поэтому min-height анимируется вместе с padding.
+        minHeight: compact ? '0vh' : '78vh',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        transition: 'padding .45s cubic-bezier(.4,0,.2,1), min-height .45s cubic-bezier(.4,0,.2,1)',
       }}
     >
       <div
         style={{
+          width: '100%',
           maxWidth: 1000,
           margin: '0 auto',
           display: 'flex',
@@ -122,19 +130,19 @@ export function SearchForm({
         </div>
 
         {!compact ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxWidth: 620 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 680 }}>
             <div
               style={{
-                fontSize: 38,
-                fontWeight: 700,
-                lineHeight: 1.1,
+                fontSize: 54,
+                fontWeight: 800,
+                lineHeight: 1.05,
                 letterSpacing: '-.03em',
                 color: '#FFFFFF',
               }}
             >
               Прямого билета нет?
             </div>
-            <div style={{ fontSize: 17, color: COLORS.headerText, lineHeight: 1.45 }}>
+            <div style={{ fontSize: 20, color: COLORS.headerText, lineHeight: 1.45 }}>
               Соберём поездку через пересадку из билетов, которые продаются прямо сейчас.
             </div>
           </div>

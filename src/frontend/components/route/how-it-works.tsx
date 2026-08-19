@@ -39,8 +39,16 @@ export function HowItWorks() {
         }}
       >
         {STEPS.map((text, index) => (
-          <div key={text} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: COLORS.accentLight }}>
+          <div key={text} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <span
+              style={{
+                fontSize: 44,
+                fontWeight: 800,
+                lineHeight: 1,
+                letterSpacing: '-.04em',
+                color: COLORS.accentLight,
+              }}
+            >
               0{index + 1}
             </span>
             <span style={{ fontSize: 16, color: COLORS.inkSoft, lineHeight: 1.45 }}>{text}</span>
