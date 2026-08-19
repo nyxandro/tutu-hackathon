@@ -263,18 +263,39 @@ export function CityInput({
       </label>
 
       {problem ? (
+        // Всплывашка идёт вверх: снизу она перекрывала фильтры и результаты.
         <span
           style={{
             position: 'absolute',
-            top: 'calc(100% + 6px)',
-            left: 18,
-            fontSize: 12,
-            color: '#FF9C90',
+            bottom: 'calc(100% + 8px)',
+            left: 12,
+            zIndex: 25,
+            padding: '7px 11px',
+            borderRadius: 9,
+            background: '#E0402F',
+            color: '#FFFFFF',
+            fontSize: 12.5,
+            fontWeight: 600,
             whiteSpace: 'nowrap',
+            boxShadow: '0 8px 20px rgba(21,12,86,.28)',
             pointerEvents: 'none',
           }}
         >
           {problem}
+          {/* Хвостик вниз, к полю: без него подсказка висит сама по себе */}
+          <span
+            aria-hidden
+            style={{
+              position: 'absolute',
+              top: '100%',
+              left: 16,
+              width: 0,
+              height: 0,
+              borderLeft: '5px solid transparent',
+              borderRight: '5px solid transparent',
+              borderTop: '6px solid #E0402F',
+            }}
+          />
         </span>
       ) : null}
 
