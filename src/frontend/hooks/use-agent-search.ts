@@ -130,13 +130,19 @@ export function useAgentSearch() {
                 setChains([...collected]);
               }
 
-              setSteps((prev) =>
-                prev.map((step) =>
-                  step.id === event.toolCallId
-                    ? { ...step, result: described.text, empty: described.empty }
-                    : step,
-                ),
-              );
+              // Повтор — это сбой модели, а не шаг поиска: убираем строку из
+              // ленты, чтобы работа не выглядела метанием.
+              if (output.repeated === true) {
+                setSteps((prev) => prev.filter((step) => step.id !== event.toolCallId));
+              } else {
+                setSteps((prev) =>
+                  prev.map((step) =>
+                    step.id === event.toolCallId
+                      ? { ...step, result: described.text, empty: described.empty }
+                      : step,
+                  ),
+                );
+              }
             }
 
             if (event.type === 'text-delta' && event.delta) {

@@ -75,12 +75,13 @@ export function createAgentTools(session: AgentSession, collected: RouteChain[])
             stored.origin === origin && stored.destination === destination && stored.date === date,
         );
         if (repeated) {
+          // Отвечаем ошибкой, а не данными: тихий повтор модель не замечала
+          // и продолжала ходить по кругу.
           return {
-            leg_id: repeated.id,
-            route: `${origin} → ${destination}`,
             repeated: true,
-            note: 'Этот маршрут уже проверен, повторять его не нужно.',
-            ...summarizeLegs(repeated.legs),
+            error: `Маршрут ${origin} → ${destination} на ${date} уже проверен (${repeated.id}, ` +
+              `найдено рейсов: ${repeated.legs.length}). Не спрашивай повторно — ` +
+              `возьми следующий город из списка кандидатов.`,
           };
         }
 
@@ -154,7 +155,26 @@ export function createAgentTools(session: AgentSession, collected: RouteChain[])
           return { error: 'Плечо с таким идентификатором не найдено' };
         }
 
-        const chains = dedupe(pairLegs(first.legs, second.legs, hub, 'ai'))
+        // Модель иногда путает порядок и подаёт плечи наоборот. Тогда стыковка
+        // считается от прибытия в конечный город до выезда из начального —
+        // получается отрицательное время и ложное «не стыкуются». Определяем
+        // порядок по географии: у первого плеча пункт прибытия и есть узел.
+        const [before, after] =
+          first.destination === hub || second.origin === hub
+            ? [first, second]
+            : second.destination === hub || first.origin === hub
+              ? [second, first]
+              : [first, second];
+
+        if (before.destination !== hub || after.origin !== hub) {
+          return {
+            error:
+              `Плечи не сходятся в городе ${hub}: ${before.origin} → ${before.destination} и ` +
+              `${after.origin} → ${after.destination}. Проверь, те ли идентификаторы передал.`,
+          };
+        }
+
+        const chains = dedupe(pairLegs(before.legs, after.legs, hub, 'ai'))
           .sort((a, b) => a.arrivalAt.localeCompare(b.arrivalAt))
           .slice(0, ROUTE_CHAINS_LIMIT);
 
