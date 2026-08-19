@@ -34,8 +34,13 @@ function toIso(date: Date): string {
 function humanDate(iso: string): string {
   const date = new Date(`${iso}T00:00:00`);
   if (Number.isNaN(date.getTime())) return iso;
-  // Сегодняшний день называем словом: так понятнее, что поиск идёт «прямо сейчас».
-  if (iso === toIso(new Date())) return 'Сегодня';
+  // Ближайшие два дня называем словами: так понятнее, что поиск идёт «прямо
+  // сейчас», а не про абстрактную дату в календаре.
+  const today = new Date();
+  if (iso === toIso(today)) return 'Сегодня';
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  if (iso === toIso(tomorrow)) return 'Завтра';
   return `${date.getDate()} ${MONTHS_GENITIVE[date.getMonth()]} ${date.getFullYear()}`;
 }
 
