@@ -124,7 +124,6 @@ export function RouteSearch() {
         from={from}
         to={to}
         date={date}
-        showExamples={idle}
         compact={!idle}
         onFrom={setFrom}
         onTo={setTo}
@@ -151,11 +150,6 @@ export function RouteSearch() {
           )
         }
         onSearch={() => run({ origin: from, destination: to, date })}
-        onExample={(example) => {
-          setFrom(example.origin);
-          setTo(example.destination);
-          run({ origin: example.origin, destination: example.destination, date });
-        }}
       />
 
       <div

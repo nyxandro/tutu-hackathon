@@ -8,7 +8,7 @@
 
 'use client';
 
-import { ROUTE_EXAMPLES, TRANSPORT_MODES, TRAVEL_CONSTRAINTS } from '@/frontend/config';
+import { TRANSPORT_MODES, TRAVEL_CONSTRAINTS } from '@/frontend/config';
 import { COLORS, TRANSPORT_ICONS } from '@/frontend/design';
 import { CityInput, isKnownCity } from '@/frontend/components/route/city-input';
 import { DatePicker } from '@/frontend/components/route/date-picker';
@@ -18,7 +18,6 @@ export function SearchForm({
   from,
   to,
   date,
-  showExamples,
   constraints,
   excluded,
   onFrom,
@@ -27,7 +26,6 @@ export function SearchForm({
   travelers,
   onTravelers,
   onSearch,
-  onExample,
   onConstraint,
   onMode,
   onDetect,
@@ -39,14 +37,12 @@ export function SearchForm({
   from: string;
   to: string;
   date: string;
-  showExamples: boolean;
   onFrom: (value: string) => void;
   onTo: (value: string) => void;
   onDate: (value: string) => void;
   travelers: number;
   onTravelers: (count: number) => void;
   onSearch: () => void;
-  onExample: (example: { origin: string; destination: string }) => void;
   constraints: Record<string, boolean>;
   onConstraint: (key: string) => void;
   excluded: string[];
@@ -277,30 +273,6 @@ export function SearchForm({
             })}
           </div>
 
-          {showExamples ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-              <span style={{ fontSize: 14, color: COLORS.mutedSoft }}>Попробуйте:</span>
-              {ROUTE_EXAMPLES.map((example) => (
-                <button
-                  key={`${example.origin}-${example.destination}`}
-                  onClick={() => onExample(example)}
-                  style={{
-                    height: 32,
-                    padding: '0 14px',
-                    border: 'none',
-                    borderRadius: 8,
-                    background: COLORS.headerChip,
-                    color: COLORS.chipText,
-                    fontFamily: 'inherit',
-                    fontSize: 13,
-                    cursor: 'pointer',
-                  }}
-                >
-                  {example.origin} → {example.destination}
-                </button>
-              ))}
-            </div>
-          ) : null}
         </div>
       </div>
     </div>
