@@ -17,6 +17,8 @@ import { dedupe, pairLegs, searchLeg, toLeg, type RouteChain, type RouteLeg } fr
 import { resolveHub } from '@/modules/routing/hubs';
 import { ROUTE_CHAINS_LIMIT } from '@/modules/routing/config';
 import type { AgentSession } from '@/modules/agent/session';
+import { toolError } from '@/modules/agent/errors';
+import { withRetry } from '@/modules/agent/retry';
 import type { HotelOffer } from '@/modules/tutu/types';
 
 /**
@@ -59,40 +61,66 @@ export function createAgentTools(session: AgentSession, collected: RouteChain[])
   return {
     search_leg: tool({
       description:
-        'Найти рейсы между двумя городами на дату. Возвращает идентификатор найденного ' +
-        'плеча и краткую сводку. Полное расписание остаётся на сервере — оно не нужно ' +
-        'для принятия решения.',
+        'Найти рейсы между двумя городами на дату: поезда, автобусы, самолёты, ' +
+        'электрички сразу. Возвращает идентификатор плеча и краткую сводку — ' +
+        'полное расписание остаётся на сервере, для решения оно не нужно. ' +
+        'Идемпотентен: повторный вызов с теми же аргументами ничего не меняет.',
       inputSchema: z.object({
         origin: z.string().describe('Город отправления, например «Москва»'),
         destination: z.string().describe('Город прибытия, например «Ярославль»'),
         date: z.string().describe('Дата в формате ГГГГ-ММ-ДД'),
       }),
       execute: async ({ origin, destination, date }) => {
-        // Модель иногда повторяет один и тот же запрос. Отдаём прежний результат,
-        // не тратя обращение к Туту, и прямо говорим ей, что это повтор.
+        // Повтор одного и того же запроса — признак того, что модель сбилась.
         const repeated = [...session.legs.values()].find(
           (stored) =>
             stored.origin === origin && stored.destination === destination && stored.date === date,
         );
         if (repeated) {
-          // Отвечаем ошибкой, а не данными: тихий повтор модель не замечала
-          // и продолжала ходить по кругу.
-          return {
-            repeated: true,
-            error: `Маршрут ${origin} → ${destination} на ${date} уже проверен (${repeated.id}, ` +
-              `найдено рейсов: ${repeated.legs.length}). Не спрашивай повторно — ` +
-              `возьми следующий город из списка кандидатов.`,
-          };
+          return toolError(
+            'DUPLICATE_REQUEST',
+            `Маршрут ${origin} → ${destination} на ${date} уже проверен (${repeated.id}, рейсов: ${repeated.legs.length}).`,
+            'Не спрашивай повторно. Возьми следующий город из списка кандидатов или переходи к следующему дню.',
+          );
+        }
+
+        if (Date.now() > session.deadline) {
+          return toolError(
+            'DEADLINE_REACHED',
+            'Время на поиск вышло.',
+            `Заканчивай и отвечай по тому, что уже нашёл. ${session.describe()}`,
+          );
         }
 
         if (session.searchCount >= MAX_SEARCHES) {
-          return { error: 'Лимит запросов к Туту исчерпан. Работай с тем, что уже найдено.' };
+          return toolError(
+            'SEARCH_BUDGET_SPENT',
+            `Исчерпан лимит обращений к Туту (${MAX_SEARCHES}).`,
+            `Работай с тем, что уже найдено, и отвечай. ${session.describe()}`,
+          );
         }
         session.searchCount += 1;
 
-        const found = await searchLeg(origin, destination, date);
+        const attempt = await withRetry(`${origin} → ${destination}`, () =>
+          searchLeg(origin, destination, date),
+        );
+
+        if (!attempt.ok) {
+          return toolError(
+            attempt.code,
+            `Туту не ответил на запрос ${origin} → ${destination}.`,
+            'Попробуй другой город пересадки: этот сейчас проверить нельзя.',
+            false,
+          );
+        }
+
+        const found = attempt.value;
         if (found.failed) {
-          return { error: 'Туту не ответил на этот запрос' };
+          return toolError(
+            'TUTU_UNAVAILABLE',
+            `Туту вернул ошибку по запросу ${origin} → ${destination}.`,
+            'Попробуй другой город пересадки.',
+          );
         }
 
         const legs = found.offers
@@ -102,11 +130,18 @@ export function createAgentTools(session: AgentSession, collected: RouteChain[])
         const id = session.next();
         session.legs.set(id, { id, origin, destination, date, legs });
 
+        // Плечо «узел → цель» пустое означает, что узел бесполезен целиком:
+        // помечаем сразу, чтобы агент не тратил на него второй запрос.
+        if (legs.length === 0 && destination !== session.target) {
+          session.triedHubs.set(origin, 'no-last-leg');
+        }
+
         return {
           leg_id: id,
           route: `${origin} → ${destination}`,
           region: found.region,
           ...summarizeLegs(legs),
+          state: session.describe(),
         };
       },
     }),
@@ -152,7 +187,11 @@ export function createAgentTools(session: AgentSession, collected: RouteChain[])
         const second = session.legs.get(second_leg_id);
 
         if (!first || !second) {
-          return { error: 'Плечо с таким идентификатором не найдено' };
+          return toolError(
+            'LEG_NOT_FOUND',
+            'Плечо с таким идентификатором не найдено.',
+            'Сверь идентификаторы: их выдаёт search_leg в поле leg_id.',
+          );
         }
 
         // Модель иногда путает порядок и подаёт плечи наоборот. Тогда стыковка
@@ -167,11 +206,11 @@ export function createAgentTools(session: AgentSession, collected: RouteChain[])
               : [first, second];
 
         if (before.destination !== hub || after.origin !== hub) {
-          return {
-            error:
-              `Плечи не сходятся в городе ${hub}: ${before.origin} → ${before.destination} и ` +
-              `${after.origin} → ${after.destination}. Проверь, те ли идентификаторы передал.`,
-          };
+          return toolError(
+            'LEGS_DO_NOT_MEET',
+            `Плечи не сходятся в городе ${hub}: ${before.origin} → ${before.destination} и ${after.origin} → ${after.destination}.`,
+            'Передай плечи одного маршрута: первое должно приходить в город пересадки, второе — уходить из него.',
+          );
         }
 
         const chains = dedupe(pairLegs(before.legs, after.legs, hub, 'ai'))
@@ -182,25 +221,36 @@ export function createAgentTools(session: AgentSession, collected: RouteChain[])
         // модель их пересказывать не должна.
         collected.push(...chains);
 
+        session.triedHubs.set(hub, chains.length > 0 ? 'solved' : 'no-connection');
+        session.solved += chains.length;
+
         // Полные маршруты уходят в интерфейс, модель увидит только сводку
         // (см. toModelOutput ниже) — так карточки строятся из данных Туту.
-        return { count: chains.length, hub, chains };
+        return { count: chains.length, hub, chains, state: session.describe() };
       },
 
       toModelOutput: ({ output }) => {
-        const result = output as { count: number; chains: RouteChain[] };
+        const result = output as { count: number; chains: RouteChain[]; state?: string; error?: true };
+        // Ошибку отдаём модели как есть: в ней уже есть код и что делать дальше.
+        if (result.error) return { type: 'json', value: result as never };
         if (result.count === 0) {
           return {
             type: 'json',
             value: {
               count: 0,
               reason: 'Рейсы есть, но по времени не стыкуются — на второй не успеть.',
+              remediation: 'Переходи к следующему городу из списка кандидатов.',
+              state: result.state,
             },
           };
         }
         return {
           type: 'json',
-          value: { count: result.count, connections: summarizeChains(result.chains) },
+          value: {
+            count: result.count,
+            connections: summarizeChains(result.chains),
+            state: result.state,
+          },
         };
       },
     }),

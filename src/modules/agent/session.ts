@@ -26,14 +26,49 @@ export type AgentSession = {
   legs: Map<string, StoredLeg>;
   /** Сколько раз ходили в Туту — защита от бесконечного перебора. */
   searchCount: number;
+  /** Города, которые уже пробовали как пересадку, и чем закончилось. */
+  triedHubs: Map<string, 'no-last-leg' | 'no-connection' | 'solved'>;
+  /** Сколько маршрутов уже собрано: агенту пора останавливаться. */
+  solved: number;
+  /** Момент, после которого поиск обязан завершиться. */
+  deadline: number;
+  /** Конечный город поиска: по нему отличаем плечо «узел → цель». */
+  target: string;
   next: () => string;
+  /** Явное состояние для модели: что сделано и сколько осталось. */
+  describe: () => string;
 };
 
-export function createSession(): AgentSession {
+export function createSession(target: string, deadlineMs: number): AgentSession {
   let counter = 0;
-  return {
+  const session: AgentSession = {
     legs: new Map(),
     searchCount: 0,
+    triedHubs: new Map(),
+    solved: 0,
+    deadline: Date.now() + deadlineMs,
+    target,
     next: () => `leg${++counter}`,
+    describe: () => {
+      const hubs = [...session.triedHubs.entries()]
+        .map(([city, outcome]) => {
+          const label = {
+            'no-last-leg': 'нет плеча до цели',
+            'no-connection': 'не стыкуется по времени',
+            solved: 'маршрут собран',
+          }[outcome];
+          return `${city} — ${label}`;
+        })
+        .join('; ');
+
+      const secondsLeft = Math.max(0, Math.round((session.deadline - Date.now()) / 1000));
+      return [
+        `Проверено городов: ${session.triedHubs.size}${hubs ? ` (${hubs})` : ''}.`,
+        `Собрано маршрутов: ${session.solved}.`,
+        `Запросов к Туту осталось: ${Math.max(0, 20 - session.searchCount)}.`,
+        `Времени осталось: ${secondsLeft} с.`,
+      ].join(' ');
+    },
   };
+  return session;
 }

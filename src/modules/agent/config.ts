@@ -19,3 +19,8 @@ export const AGENT_FALLBACK_MODEL = 'nvidia/nemotron-3-super-120b-a12b:free';
 export const AGENT_MAX_STEPS = 30;
 
 export const AGENT_TIMEOUT_MS = 120_000;
+
+// Повторы обращений к Туту: только временные сбои, только идемпотентный поиск.
+// Две попытки — компромисс между устойчивостью и нежеланием добивать их сервер.
+export const RETRY_ATTEMPTS = 2;
+export const RETRY_BASE_DELAY_MS = 1500;

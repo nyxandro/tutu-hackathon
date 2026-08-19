@@ -10,7 +10,7 @@
 
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { convertToModelMessages, createUIMessageStreamResponse, isStepCount, streamText, toUIMessageStream } from 'ai';
-import { AGENT_MAX_STEPS, AGENT_MODEL } from '@/modules/agent/config';
+import { AGENT_MAX_STEPS, AGENT_MODEL, AGENT_TIMEOUT_MS } from '@/modules/agent/config';
 import { buildAgentPrompt } from '@/modules/agent/prompt';
 import { createSession } from '@/modules/agent/session';
 import { createAgentTools } from '@/modules/agent/tools';
@@ -51,7 +51,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const session = createSession();
+  const session = createSession(destination.trim(), AGENT_TIMEOUT_MS);
   // Сюда инструменты складывают готовые маршруты: их рисует интерфейс,
   // модель их не пересказывает и потому не может исказить.
   const collected: RouteChain[] = [];
@@ -64,6 +64,9 @@ export async function POST(req: Request) {
     prompt: `Найди, как добраться: ${origin.trim()} → ${destination.trim()}, дата ${date.trim()}.`,
     tools,
     stopWhen: isStepCount(AGENT_MAX_STEPS),
+    // Жёсткий потолок времени: без него цикл висит до maxDuration роута,
+    // а на демо это выглядит как зависание.
+    abortSignal: AbortSignal.timeout(AGENT_TIMEOUT_MS),
     onError: ({ error }) => {
       console.error('[agent] сбой цикла', error);
     },

@@ -27,6 +27,7 @@ type ToolEvent = {
   input?: Record<string, unknown>;
   output?: Record<string, unknown>;
   delta?: string;
+  id?: string;
 };
 
 export function useAgentSearch() {
@@ -91,6 +92,7 @@ export function useAgentSearch() {
       const decoder = new TextDecoder();
       let buffer = '';
       let text = '';
+      let thought = '';
       const collected: RouteChain[] = [];
 
       try {
@@ -112,10 +114,21 @@ export function useAgentSearch() {
               continue;
             }
 
+            // Рассуждение модели копится и прикрепляется к следующему шагу:
+            // так видно, почему агент выбрал именно этот город.
+            if (event.type === 'reasoning-delta' && event.delta) {
+              thought += event.delta;
+            }
+
             if (event.type === 'tool-input-available' && event.toolCallId && event.toolName) {
               names.current.set(event.toolCallId, event.toolName);
               const action = describeCall(event.toolName, event.input ?? {});
-              setSteps((prev) => [...prev, { id: event.toolCallId as string, action }]);
+              const reasoning = thought.trim();
+              thought = '';
+              setSteps((prev) => [
+                ...prev,
+                { id: event.toolCallId as string, action, ...(reasoning ? { reasoning } : {}) },
+              ]);
             }
 
             if (event.type === 'tool-output-available' && event.toolCallId) {
