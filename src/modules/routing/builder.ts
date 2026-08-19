@@ -12,6 +12,7 @@
  * - searchLeg(), toLeg(), pairLegs(), dedupe() — кирпичи, из которых собирает
  *   маршрут и агентный цикл: расчёты стыковок везде одни и те же
  * - RouteChain, RouteLeg, RouteSearchResult, StayFallback — типы результата
+ * - directChain() — превращает одиночный рейс в маршрут без пересадок
  */
 
 import { LAYOVER_DEFAULT_MIN, LAYOVER_MAX_MIN, LAYOVER_MIN, MAX_HUBS_PER_SEARCH, RESCUE_HOTELS_LIMIT, ROUTE_CHAINS_LIMIT, SECOND_LEG_EXTRA_DAYS, STAY_LOOKAHEAD_DAYS } from '@/modules/routing/config';
@@ -119,7 +120,7 @@ function minutesBetween(fromIso: string, toIso: string): number {
   return (new Date(toIso).getTime() - new Date(fromIso).getTime()) / 60_000;
 }
 
-function directChain(leg: RouteLeg): RouteChain {
+export function directChain(leg: RouteLeg): RouteChain {
   return {
     kind: 'direct',
     legs: [leg],

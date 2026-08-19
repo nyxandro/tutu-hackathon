@@ -215,7 +215,12 @@ export function useAgentSearch() {
 
               // Маршруты приходят полными — карточки строятся из данных Туту,
               // а не из пересказа модели.
-              if (toolName === 'build_connections' && Array.isArray(output.chains)) {
+              // Маршруты приезжают и от build_connections, и от search_leg:
+              // прямые рейсы до цели сводить не с чем, они готовы сразу.
+              if (
+                (toolName === 'build_connections' || toolName === 'search_leg') &&
+                Array.isArray(output.chains)
+              ) {
                 collected.push(...(output.chains as RouteChain[]));
               }
 

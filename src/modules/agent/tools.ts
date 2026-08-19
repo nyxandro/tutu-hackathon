@@ -13,11 +13,17 @@
 import { tool } from 'ai';
 import { z } from 'zod';
 import { callTutu } from '@/modules/tutu/client';
-import { dedupe, pairLegs, searchLeg, toLeg, type RouteChain, type RouteLeg } from '@/modules/routing/builder';
+import { dedupe, directChain, pairLegs, searchLeg, toLeg, type RouteChain, type RouteLeg } from '@/modules/routing/builder';
 import { cityPopulation, resolveHub } from '@/modules/routing/hubs';
 import { HOTEL_DETAILS_LIMIT, RESCUE_HOTELS_LIMIT, ROUTE_CHAINS_LIMIT } from '@/modules/routing/config';
 import type { AgentSession } from '@/modules/agent/session';
 import { toolError } from '@/modules/agent/errors';
+
+/** Один ли это город: модель пишет названия как придётся, вплоть до «ё». */
+function sameCity(first: string, second: string): boolean {
+  const norm = (value: string) => value.trim().toLowerCase().replace(/ё/g, 'е');
+  return norm(first) === norm(second);
+}
 
 /** Сдвиг даты ГГГГ-ММ-ДД на сутки — для поиска второго плеча наутро. */
 function shiftDay(date: string, days: number): string {
@@ -225,6 +231,27 @@ export function createAgentTools(session: AgentSession, collected: RouteChain[])
         const id = session.next();
         session.legs.set(id, { id, origin, destination, date, legs, alsoNextDay: Boolean(alsoNextDay) });
 
+        // Рейсы прямо до цели — это уже готовый ответ, их незачем сводить
+        // через build_connections. Без этой ветки прямые рейсы на другой день
+        // терялись: агент их находил, но положить в выдачу было некуда, и на
+        // экран уходил только его пересказ.
+        let directChains: RouteChain[] = [];
+        if (legs.length > 0 && sameCity(destination, session.target)) {
+          directChains = legs
+            .map((leg) => directChain(leg))
+            .filter(
+              (chain) =>
+                !collected.some(
+                  (existing) =>
+                    existing.kind === 'direct' &&
+                    existing.departureAt === chain.departureAt &&
+                    existing.totalPrice === chain.totalPrice,
+                ),
+            )
+            .slice(0, ROUTE_CHAINS_LIMIT);
+          collected.push(...directChains);
+        }
+
         // Плечо «узел → цель» пустое означает, что узел бесполезен целиком:
         // помечаем сразу, чтобы агент не тратил на него второй запрос.
         if (legs.length === 0 && destination !== session.target) {
@@ -241,6 +268,8 @@ export function createAgentTools(session: AgentSession, collected: RouteChain[])
           leg_id: id,
           route: `${origin} → ${destination}`,
           region: found.region,
+          // Полные карточки рисует интерфейс, модель получает только сводку.
+          ...(directChains.length > 0 ? { chains: directChains } : {}),
           ...summarizeLegs(legs),
           state: session.describe(),
         };
