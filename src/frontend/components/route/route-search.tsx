@@ -54,7 +54,7 @@ export function RouteSearch() {
   const [modes, setModes] = useState<string[]>([]);
 
   const { steps, chains, stay, summary, status, search } = useAgentSearch();
-  const { detect, status: geoStatus } = useNearestCity();
+  const { detect, status: geoStatus, result: geoResult } = useNearestCity();
 
   function run(query: Omit<SearchQuery, 'modes'>) {
     if (!query.origin.trim() || !query.destination.trim()) return;
@@ -111,6 +111,8 @@ export function RouteSearch() {
         onConstraint={(key) => setConstraints((prev) => ({ ...prev, [key]: !prev[key] }))}
         modes={modes}
         detecting={geoStatus === 'asking'}
+        geoMessage={geoStatus === 'asking' ? 'Определяем положение…' : (geoResult?.message ?? null)}
+        geoFailed={geoStatus === 'denied' || geoStatus === 'failed'}
         onDetect={async () => {
           const city = await detect();
           if (city) setFrom(city);
