@@ -111,8 +111,12 @@ export function RouteSearch() {
         onConstraint={(key) => setConstraints((prev) => ({ ...prev, [key]: !prev[key] }))}
         modes={modes}
         detecting={geoStatus === 'asking'}
-        geoMessage={geoStatus === 'asking' ? 'Определяем положение…' : (geoResult?.message ?? null)}
-        geoFailed={geoStatus === 'denied' || geoStatus === 'failed'}
+        detected={geoStatus === 'done'}
+        detectError={
+          geoStatus === 'denied' || geoStatus === 'failed'
+            ? (geoResult?.message ?? 'Не удалось определить город')
+            : null
+        }
         onDetect={async () => {
           const city = await detect();
           if (city) setFrom(city);

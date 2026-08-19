@@ -29,8 +29,8 @@ export function SearchForm({
   onMode,
   onDetect,
   detecting,
-  geoMessage,
-  geoFailed,
+  detected,
+  detectError,
 }: {
   from: string;
   to: string;
@@ -47,8 +47,8 @@ export function SearchForm({
   onMode: (key: string) => void;
   onDetect: () => void;
   detecting: boolean;
-  geoMessage: string | null;
-  geoFailed: boolean;
+  detected: boolean;
+  detectError: string | null;
 }) {
 
   return (
@@ -113,6 +113,8 @@ export function SearchForm({
               first
               onDetect={onDetect}
               detecting={detecting}
+              detected={detected}
+              detectError={detectError}
             />
             <CityInput label="Куда" value={to} onChange={onTo} placeholder="Углич" />
 
@@ -137,30 +139,6 @@ export function SearchForm({
               Найти способы добраться
             </button>
           </form>
-
-          {geoMessage ? (
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                fontSize: 13,
-                color: geoFailed ? '#FFC9BE' : COLORS.headerText,
-              }}
-            >
-              <span
-                aria-hidden
-                style={{
-                  fontFamily: "'Material Symbols Rounded'",
-                  fontSize: 17,
-                  lineHeight: 1,
-                }}
-              >
-                {geoFailed ? 'error' : 'my_location'}
-              </span>
-              {geoMessage}
-            </div>
-          ) : null}
 
           {/* Фильтры видны всегда: в срочной ситуации человек не должен искать,
               где их раскрыть. Транспорт — иконками, чтобы строка не разрасталась. */}

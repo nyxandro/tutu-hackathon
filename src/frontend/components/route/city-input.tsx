@@ -49,6 +49,8 @@ export function CityInput({
   onChange,
   onDetect,
   detecting,
+  detected,
+  detectError,
 }: {
   label: string;
   value: string;
@@ -58,8 +60,13 @@ export function CityInput({
   /** Кнопка «определить мой город» — только у поля отправления. */
   onDetect?: () => void;
   detecting?: boolean;
+  /** Город определён успешно — подсвечиваем прицел зелёным. */
+  detected?: boolean;
+  /** Текст ошибки: показывается всплывашкой над полем. */
+  detectError?: string | null;
 }) {
   const [open, setOpen] = useState(false);
+  const [errorOpen, setErrorOpen] = useState(false);
   const [active, setActive] = useState(0);
   const blurTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -93,7 +100,8 @@ export function CityInput({
       >
         <span style={{ fontSize: 12, color: COLORS.mutedSoft }}>{label}</span>
         <input
-          value={value}
+          value={detecting ? 'Определяем город…' : value}
+          readOnly={detecting}
           placeholder={placeholder}
           autoComplete="off"
           onChange={(event) => {
@@ -126,7 +134,7 @@ export function CityInput({
             outline: 'none',
             fontSize: 17,
             fontWeight: 500,
-            color: COLORS.ink,
+            color: detecting ? COLORS.mutedSoft : COLORS.ink,
             background: 'transparent',
             padding: 0,
             width: '100%',
@@ -138,7 +146,12 @@ export function CityInput({
       {onDetect ? (
         <button
           type="button"
-          onClick={onDetect}
+          onClick={() => {
+            setErrorOpen(false);
+            onDetect();
+          }}
+          onMouseEnter={() => detectError && setErrorOpen(true)}
+          onMouseLeave={() => setErrorOpen(false)}
           title="Определить мой город"
           aria-label="Определить мой город"
           style={{
@@ -151,7 +164,7 @@ export function CityInput({
             border: 'none',
             borderRadius: 8,
             background: 'transparent',
-            color: detecting ? COLORS.faint : COLORS.accent,
+            color: detectError ? '#E0402F' : detected ? '#1FA971' : detecting ? COLORS.faint : COLORS.accent,
             cursor: detecting ? 'default' : 'pointer',
             fontFamily: "'Material Symbols Rounded'",
             fontSize: 20,
@@ -161,8 +174,31 @@ export function CityInput({
             justifyContent: 'center',
           }}
         >
-          {detecting ? 'more_horiz' : 'my_location'}
+          {detecting ? 'more_horiz' : detectError ? 'location_off' : 'my_location'}
         </button>
+      ) : null}
+
+      {/* Ошибку показываем поверх поля, а не строкой под формой: она
+          относится к этому полю и не должна занимать место постоянно. */}
+      {detectError && errorOpen ? (
+        <div
+          style={{
+            position: 'absolute',
+            bottom: 'calc(100% + 6px)',
+            right: 8,
+            zIndex: 50,
+            width: 230,
+            padding: '10px 12px',
+            borderRadius: 12,
+            background: COLORS.ink,
+            color: '#FFFFFF',
+            fontSize: 13,
+            lineHeight: 1.4,
+            boxShadow: '0 10px 28px rgba(21,12,86,.32)',
+          }}
+        >
+          {detectError}
+        </div>
       ) : null}
 
       {suggestions.length > 0 ? (
