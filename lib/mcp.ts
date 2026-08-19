@@ -210,3 +210,27 @@ export function getTutuTools(): Promise<ToolSet> {
   globalForMcp.tutuTools ??= connect();
   return globalForMcp.tutuTools;
 }
+
+/**
+ * Прямой вызов инструмента Туту в обход модели. Нужен сценариям, которые обязаны
+ * отработать детерминированно и быстро: экран спасения не должен зависеть от того,
+ * додумается ли языковая модель вызвать нужный инструмент.
+ */
+export async function callTutu(name: string, args: Record<string, unknown>): Promise<TutuToolPayload> {
+  // Кэш проверяется ДО подключения: сервер Туту может быть недоступен или
+  // заблокировать нас по rate limit, а прогретый сценарий обязан открыться.
+  const cached = await readCache(cacheKey(name, args));
+  if (cached) return cached;
+
+  const tools = await getTutuTools();
+  const tool = tools[name];
+
+  if (!tool?.execute) {
+    throw new Error(`APP_MCP_TOOL_MISSING: инструмент ${name} недоступен на сервере Туту`);
+  }
+
+  return (await tool.execute(args as never, {
+    toolCallId: `direct-${name}`,
+    messages: [],
+  } as never)) as TutuToolPayload;
+}

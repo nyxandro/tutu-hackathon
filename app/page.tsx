@@ -1,14 +1,12 @@
 /**
- * Главная страница: новый диалог. Идентификатор сессии выдаётся сервером,
- * чтобы диалог можно было сохранить и потом открыть по адресу /c/<id>.
+ * Главная и единственная страница продукта: поиск способов добраться,
+ * когда прямого билета нет.
  */
 
-import { randomUUID } from 'node:crypto';
-import { Chat } from '@/components/chat/chat';
+import { RouteSearch } from '@/components/route/route-search';
 
-// Сессия должна быть новой на каждый заход, поэтому страница не кэшируется.
 export const dynamic = 'force-dynamic';
 
 export default function HomePage() {
-  return <Chat sessionId={randomUUID()} initialMessages={[]} />;
+  return <RouteSearch />;
 }
