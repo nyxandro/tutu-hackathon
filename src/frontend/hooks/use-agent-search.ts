@@ -79,9 +79,28 @@ export function useAgentSearch() {
 
     const result = data as RouteSearchResult;
     setChains([...result.direct, ...result.transfers]);
-    setSteps(
-      result.notes.map((note, index) => ({ id: `note${index}`, action: note, result: '', empty: true })),
-    );
+    // Заметки дописываем к ленте, а не заменяем ею: иначе вся работа агента
+    // исчезает с экрана и остаётся одна строка про неудачу.
+    setSteps((prev) => [
+      ...prev,
+      ...result.notes.map((note, index) => ({
+        id: `note${index}`,
+        action: note,
+        result: '',
+        empty: true,
+      })),
+    ]);
+    // Запасной путь сам подбирает ночлег, когда уехать в этот день нельзя.
+    // Раньше результат выбрасывался, и человек оставался без гостиниц ровно
+    // в той ситуации, ради которой они и нужны.
+    if (result.stay?.hotels?.length) {
+      setStay({
+        city: result.stay.city,
+        checkIn: result.stay.checkIn,
+        checkOut: result.stay.checkOut,
+        hotels: result.stay.hotels,
+      });
+    }
     setStatus('done');
   }, []);
 

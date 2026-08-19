@@ -66,7 +66,7 @@ export function RouteSearch() {
   // ненужные. В запрос уходят оставшиеся, а если выключенных нет — ничего.
   const [excluded, setExcluded] = useState<string[]>([]);
 
-  const { steps, chains, stay, summary, status, applied, search } = useAgentSearch();
+  const { steps, chains, stay, status, applied, search } = useAgentSearch();
   const { detect, status: geoStatus, result: geoResult } = useNearestCity();
 
   function run(query: Omit<SearchQuery, 'modes'>) {
@@ -299,8 +299,11 @@ export function RouteSearch() {
             <div style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-.02em', color: COLORS.ink }}>
               Уехать в этот день не получится
             </div>
+            {/* Текст собираем сами: пересказ модели уезжал на экран целиком,
+                вместе с её размышлениями, которые человеку читать незачем. */}
             <div style={{ fontSize: 16, color: COLORS.inkSoft, lineHeight: 1.45 }}>
-              {summary || 'Ни прямых рейсов, ни стыковок через соседние города на эту дату не нашлось.'}
+              {`Ни прямых рейсов, ни стыковок через соседние города на ${humanDay(applied?.date ?? date)} не нашлось.`}
+              {stay ? ' Ниже гостиницы, где можно переночевать до отъезда.' : ''}
             </div>
             <button
               onClick={() => {
