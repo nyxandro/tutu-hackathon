@@ -22,6 +22,7 @@ import {
 } from '@/lib/config';
 import { callTutu } from '@/lib/mcp';
 import { resolveHub } from '@/lib/region-hubs';
+import { suggestHubs } from '@/lib/hub-suggest';
 import type { HotelOffer, TransportOffer, TutuToolPayload } from '@/lib/tutu-types';
 
 export type RouteLeg = {
@@ -42,6 +43,8 @@ export type RouteChain = {
   kind: 'direct' | 'transfer';
   legs: RouteLeg[];
   hub?: string;
+  /** Откуда взялся город пересадки: справочник регионов или подсказка модели. */
+  hubSource?: 'directory' | 'ai';
   /** Время на пересадку в минутах; для прямых маршрутов не заполняется. */
   layoverMin?: number;
   /** Стыковка укладывается в запас, но впритык — предупреждаем, а не прячем. */
@@ -138,7 +141,12 @@ function directChain(leg: RouteLeg): RouteChain {
  * не меньше запаса для второго вида транспорта: на самолёт нужно приехать заранее,
  * на автобус — меньше.
  */
-function pairLegs(first: RouteLeg[], second: RouteLeg[], hub: string): RouteChain[] {
+function pairLegs(
+  first: RouteLeg[],
+  second: RouteLeg[],
+  hub: string,
+  hubSource: 'directory' | 'ai',
+): RouteChain[] {
   const chains: RouteChain[] = [];
 
   for (const a of first) {
@@ -152,6 +160,7 @@ function pairLegs(first: RouteLeg[], second: RouteLeg[], hub: string): RouteChai
         kind: 'transfer',
         legs: [a, b],
         hub,
+        hubSource,
         layoverMin,
         // Впритык — это меньше двух запасов: успеть можно, но без права на опоздание.
         tight: layoverMin < required * 2,
@@ -318,18 +327,40 @@ export async function buildRoutes(
     return result;
   }
 
-  const hubs = resolveHub(straight.region, [origin, destination]).slice(0, MAX_HUBS_PER_SEARCH);
+  // Два источника узлов: справочник регионов (детерминированный) и подсказка
+  // модели (знает транспортную связность лучше административного деления).
+  const fromDirectory = resolveHub(straight.region, [origin, destination]);
+  const fromModel = await suggestHubs(origin, destination);
+
+  // Источники чередуем, а не склеиваем: иначе справочник занимает весь лимит
+  // и подсказка модели никогда не проверяется, хотя она бывает точнее.
+  const seen = new Set([origin.toLowerCase(), destination.toLowerCase()]);
+  const candidates: Array<{ city: string; source: 'directory' | 'ai' }> = [];
+
+  for (let i = 0; i < Math.max(fromDirectory.length, fromModel.length); i += 1) {
+    for (const [city, source] of [
+      [fromDirectory[i], 'directory'] as const,
+      [fromModel[i], 'ai'] as const,
+    ]) {
+      if (!city || seen.has(city.toLowerCase())) continue;
+      seen.add(city.toLowerCase());
+      candidates.push({ city, source });
+    }
+  }
+
+  const hubs = candidates.slice(0, MAX_HUBS_PER_SEARCH);
 
   if (hubs.length === 0) {
-    notes.push('Не удалось определить регион назначения, поэтому пересадки не подбирались.');
+    notes.push('Не удалось определить, через какие города можно проехать.');
+    result.stay = await buildStayFallback(origin, destination, date, notes);
     return result;
   }
 
-  result.triedHubs = hubs;
+  result.triedHubs = hubs.map((item) => item.city);
 
   // Узлы проверяем последовательно: параллельный залп по чужому API — прямой путь к 429.
   const chains: RouteChain[] = [];
-  for (const hub of hubs) {
+  for (const { city: hub, source } of hubs) {
     const [toHub, fromHub] = await Promise.all([
       searchLeg(origin, hub, date),
       searchLeg(hub, destination, date),
@@ -352,7 +383,7 @@ export async function buildRoutes(
       continue;
     }
 
-    const paired = pairLegs(firstLegs, secondLegs, hub);
+    const paired = pairLegs(firstLegs, secondLegs, hub, source);
     if (paired.length === 0) {
       notes.push(`Через ${hub} рейсы есть, но в этот день они не стыкуются по времени.`);
     }

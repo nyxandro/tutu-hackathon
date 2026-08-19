@@ -81,3 +81,10 @@ export const STAY_LOOKAHEAD_DAYS = 2;
 // Прогретые из fixtures ответы живут долго: это не «свежие цены», а данные для
 // показа, которые должны пережить блокировку сервера и перезапуск демо.
 export const WARM_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+// Модель для подсказки городов-пересадок. Бесплатная: нагрузка минимальная,
+// один короткий запрос на поиск. Проверена на живом тесте — единственная из
+// бесплатных, кто верно назвал Иваново и Кострому для Плёса.
+export const HUB_SUGGEST_MODEL = 'dots-studio/dots-3-note-preview:free';
+export const HUB_SUGGEST_TIMEOUT_MS = 15_000;
+export const MAX_SUGGESTED_HUBS = 3;
