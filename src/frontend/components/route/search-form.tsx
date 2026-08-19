@@ -83,7 +83,7 @@ export function SearchForm({
           </div>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <form
             onSubmit={(event) => {
               event.preventDefault();
@@ -124,7 +124,15 @@ export function SearchForm({
 
           {/* Фильтры видны всегда: в срочной ситуации человек не должен искать,
               где их раскрыть. Транспорт — иконками, чтобы строка не разрасталась. */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              flexWrap: 'wrap',
+              marginTop: 6,
+            }}
+          >
             <span style={{ fontSize: 13, color: COLORS.mutedSoft }}>Чем ехать:</span>
 
             <div style={{ display: 'flex', gap: 6 }}>
@@ -138,10 +146,10 @@ export function SearchForm({
                     aria-label={mode.label}
                     aria-pressed={active}
                     style={{
-                      width: 42,
-                      height: 38,
+                      width: 36,
+                      height: 32,
                       border: 'none',
-                      borderRadius: 10,
+                      borderRadius: 9,
                       background: active ? COLORS.accentSoft : COLORS.headerChip,
                       color: active ? COLORS.ink : COLORS.chipText,
                       cursor: 'pointer',
@@ -149,7 +157,7 @@ export function SearchForm({
                       alignItems: 'center',
                       justifyContent: 'center',
                       fontFamily: "'Material Symbols Rounded'",
-                      fontSize: 21,
+                      fontSize: 18,
                       lineHeight: 1,
                     }}
                   >
@@ -162,7 +170,7 @@ export function SearchForm({
             <span
               style={{
                 width: 1,
-                height: 24,
+                height: 20,
                 background: 'rgba(255,255,255,.14)',
                 margin: '0 2px',
               }}
@@ -176,14 +184,14 @@ export function SearchForm({
                   onClick={() => onConstraint(item.key)}
                   aria-pressed={active}
                   style={{
-                    height: 38,
-                    padding: '0 16px',
+                    height: 32,
+                    padding: '0 14px',
                     border: 'none',
                     borderRadius: 999,
                     background: active ? COLORS.accentSoft : COLORS.headerChip,
                     color: active ? COLORS.ink : COLORS.chipText,
                     fontFamily: 'inherit',
-                    fontSize: 14,
+                    fontSize: 13,
                     cursor: 'pointer',
                   }}
                 >
