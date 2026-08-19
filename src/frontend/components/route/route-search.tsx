@@ -119,7 +119,10 @@ export function RouteSearch() {
   const nothing = status === 'done' && chains.length === 0;
 
   return (
-    <div style={{ background: COLORS.bg, minHeight: '100vh', color: COLORS.inkSoft }}>
+    // Высоту экрана держит макет: main растягивается, подвал идёт следом.
+    // Собственный minHeight здесь уводил ссылку «Помощь» за нижний край, хотя
+    // до конца экрана оставалось пустое место.
+    <div style={{ background: COLORS.bg, color: COLORS.inkSoft }}>
       <SearchForm
         from={from}
         to={to}
