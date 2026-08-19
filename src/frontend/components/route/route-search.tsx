@@ -193,7 +193,7 @@ export function RouteSearch() {
                 {otherDay
                   ? `${date === foundDates[0] ? '' : 'В этот день уехать нельзя — '}нашли маршрут на ${humanDay(foundDates[0])}`
                   : transfers.length === visible.length
-                    ? `Прямого рейса ${applied?.origin ?? from} → ${applied?.destination ?? to} нет`
+                    ? `Как уехать: ${applied?.origin ?? from} → ${applied?.destination ?? to}`
                     : `Нашли ${visible.length} ${pluralize(visible.length, 'способ', 'способа', 'способов')} добраться`}
               </div>
               <div style={{ fontSize: 16, color: COLORS.inkSoft, lineHeight: 1.45 }}>
@@ -205,7 +205,7 @@ export function RouteSearch() {
                     : transfers.length === 0
                       ? 'Есть прямые рейсы.'
                       : transfers.length === visible.length
-                        ? 'Прямых рейсов нет, но добраться можно.'
+                        ? 'Уехать напрямую не выйдет, но добраться можно.'
                         : 'Прямых рейсов мало, поэтому собрали и варианты с пересадкой.',
                   transfers.length === visible.length && hubs.length
                     ? `Собрали ${visible.length} ${pluralize(visible.length, 'вариант', 'варианта', 'вариантов')} через ${hubs.join(' или ')}.`
