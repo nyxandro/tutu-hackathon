@@ -15,13 +15,17 @@ import { z } from 'zod';
 import { callTutu } from '@/modules/tutu/client';
 import { dedupe, pairLegs, searchLeg, toLeg, type RouteChain, type RouteLeg } from '@/modules/routing/builder';
 import { resolveHub } from '@/modules/routing/hubs';
-import { suggestHubs } from '@/modules/routing/hub-suggest';
 import { ROUTE_CHAINS_LIMIT } from '@/modules/routing/config';
 import type { AgentSession } from '@/modules/agent/session';
 import type { HotelOffer } from '@/modules/tutu/types';
 
-/** Сколько раз агенту позволено сходить в Туту за один поиск: защита от 429. */
-const MAX_SEARCHES = 8;
+/**
+ * Сколько раз агенту позволено сходить в Туту за один поиск: защита от 429.
+ * Двадцать — это прямой маршрут плюс девять узлов по два плеча. Это верхний
+ * предохранитель, а не цель: на практике агент укладывается в пять запросов,
+ * а повторы отсекаются до обращения к сети.
+ */
+const MAX_SEARCHES = 20;
 
 /** Короткая сводка плеча для модели: без расписания целиком, только границы. */
 function summarizeLegs(legs: RouteLeg[]) {
@@ -108,28 +112,27 @@ export function createAgentTools(session: AgentSession, collected: RouteChain[])
 
     suggest_hubs: tool({
       description:
-        'Подсказать города, через которые можно доехать, когда прямых рейсов нет. ' +
-        'Опирается на регион назначения и на транспортную географию.',
+        'Административный центр региона назначения и соседние узлы по справочнику. ' +
+        'Отвечает мгновенно. Это подсказка, а не полный список: ты знаешь ' +
+        'транспортную географию России и можешь проверять свои города тоже.',
       inputSchema: z.object({
         origin: z.string(),
         destination: z.string(),
         region: z.string().optional().describe('Регион назначения из ответа search_leg'),
       }),
+      // Справочник, без обращения к модели: агент сам языковая модель, и второй
+      // вызов внутри инструмента только добавлял задержку и таймауты.
       execute: async ({ origin, destination, region }) => {
-        const [fromDirectory, fromModel] = await Promise.all([
-          Promise.resolve(resolveHub(region, [origin, destination])),
-          suggestHubs(origin, destination),
-        ]);
+        const hubs = resolveHub(region, [origin, destination]);
 
-        const seen = new Set([origin.toLowerCase(), destination.toLowerCase()]);
-        const hubs: string[] = [];
-        for (const city of [...fromDirectory, ...fromModel]) {
-          if (seen.has(city.toLowerCase())) continue;
-          seen.add(city.toLowerCase());
-          hubs.push(city);
+        if (hubs.length === 0) {
+          return {
+            hubs: [],
+            note: 'Справочник не помог. Предложи города сам, исходя из географии, и проверь их.',
+          };
         }
 
-        return { hubs, note: 'Это только кандидаты — проверь каждый через search_leg.' };
+        return { hubs, note: 'Проверь эти города через search_leg. Можешь добавить свои.' };
       },
     }),
 
