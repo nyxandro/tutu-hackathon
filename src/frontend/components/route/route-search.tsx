@@ -12,6 +12,7 @@
 'use client';
 
 import { useState } from 'react';
+import { NIGHT_FROM_HOUR, NIGHT_TO_HOUR } from '@/frontend/config';
 import { COLORS, formatRub } from '@/frontend/design';
 import { formatTime, pluralize } from '@/frontend/format';
 import { useAgentSearch, type SearchQuery } from '@/frontend/hooks/use-agent-search';
@@ -47,6 +48,7 @@ export function RouteSearch() {
   // По умолчанию — раньше уехать: человеку, который не может выбраться, важнее
   // всего не ждать, а не выиграть час в дороге.
   const [sort, setSort] = useState<Sort>('departure');
+  const [constraints, setConstraints] = useState<Record<string, boolean>>({});
 
   const { steps, chains, stay, summary, status, search } = useAgentSearch();
 
@@ -55,22 +57,36 @@ export function RouteSearch() {
     void search(query);
   }
 
-  const sorted = [...chains].sort((a, b) => {
+  // Условия применяются к готовым маршрутам: данные о времени и стыковках
+  // уже есть, лишний запрос к Туту для этого не нужен.
+  const visible = chains.filter((chain) => {
+    if (constraints.noTight && chain.tight) return false;
+    if (constraints.noNight) {
+      const departureHour = new Date(chain.departureAt).getHours();
+      const arrivalHour = new Date(chain.arrivalAt).getHours();
+      const atNight = (hour: number) => hour >= NIGHT_FROM_HOUR || hour < NIGHT_TO_HOUR;
+      if (atNight(departureHour) || atNight(arrivalHour)) return false;
+    }
+    return true;
+  });
+  const hiddenByFilters = chains.length - visible.length;
+
+  const sorted = [...visible].sort((a, b) => {
     if (sort === 'price') return a.totalPrice - b.totalPrice;
     if (sort === 'arrival') return a.arrivalAt.localeCompare(b.arrivalAt);
     return a.departureAt.localeCompare(b.departureAt);
   });
-  const earliestDeparture = [...chains].sort((a, b) =>
+  const earliestDeparture = [...visible].sort((a, b) =>
     a.departureAt.localeCompare(b.departureAt),
   )[0];
-  const cheapest = [...chains].sort((a, b) => a.totalPrice - b.totalPrice)[0];
-  const transfers = chains.filter((chain) => chain.kind === 'transfer');
+  const cheapest = [...visible].sort((a, b) => a.totalPrice - b.totalPrice)[0];
+  const transfers = visible.filter((chain) => chain.kind === 'transfer');
   const hubs = [...new Set(transfers.map((chain) => chain.hub).filter(Boolean))];
 
   // Агент мог найти маршрут на другой день: в запрошенный не сходилось
   // расписание. Об этом надо сказать прямо, иначе человек решит, что уезжает
   // сегодня, и опоздает на сутки.
-  const foundDates = [...new Set(chains.map((chain) => chain.departureAt.slice(0, 10)))];
+  const foundDates = [...new Set(visible.map((chain) => chain.departureAt.slice(0, 10)))];
   const otherDay = foundDates.length > 0 && !foundDates.includes(date);
 
   const idle = status === 'idle';
@@ -87,6 +103,8 @@ export function RouteSearch() {
         onFrom={setFrom}
         onTo={setTo}
         onDate={setDate}
+        constraints={constraints}
+        onConstraint={(key) => setConstraints((prev) => ({ ...prev, [key]: !prev[key] }))}
         onSearch={() => run({ origin: from, destination: to, date })}
         onExample={(example) => {
           setFrom(example.origin);
@@ -109,7 +127,7 @@ export function RouteSearch() {
 
         <AgentTrace key={steps[0]?.id ?? 'idle'} steps={steps} done={!running} />
 
-        {chains.length > 0 ? (
+        {visible.length > 0 ? (
           <>
             <div
               style={{
@@ -132,9 +150,9 @@ export function RouteSearch() {
               >
                 {otherDay
                   ? `${date === foundDates[0] ? '' : 'В этот день уехать нельзя — '}нашли маршрут на ${humanDay(foundDates[0])}`
-                  : transfers.length === chains.length
+                  : transfers.length === visible.length
                     ? `Прямого рейса ${from} → ${to} нет`
-                    : `Нашли ${chains.length} ${pluralize(chains.length, 'способ', 'способа', 'способов')} добраться`}
+                    : `Нашли ${visible.length} ${pluralize(visible.length, 'способ', 'способа', 'способов')} добраться`}
               </div>
               <div style={{ fontSize: 16, color: COLORS.inkSoft, lineHeight: 1.45 }}>
                 {[
@@ -144,12 +162,12 @@ export function RouteSearch() {
                     ? `В ${humanDay(date)} уехать не получается.`
                     : transfers.length === 0
                       ? 'Есть прямые рейсы.'
-                      : transfers.length === chains.length
+                      : transfers.length === visible.length
                         ? 'Прямых рейсов нет, но добраться можно.'
                         : 'Прямых рейсов мало, поэтому собрали и варианты с пересадкой.',
-                  transfers.length === chains.length && hubs.length
-                    ? `Собрали ${chains.length} ${pluralize(chains.length, 'вариант', 'варианта', 'вариантов')} через ${hubs.join(' или ')}.`
-                    : `Всего ${chains.length} ${pluralize(chains.length, 'вариант', 'варианта', 'вариантов')}${hubs.length ? `, из них с пересадкой через ${hubs.join(' или ')}` : ''}.`,
+                  transfers.length === visible.length && hubs.length
+                    ? `Собрали ${visible.length} ${pluralize(visible.length, 'вариант', 'варианта', 'вариантов')} через ${hubs.join(' или ')}.`
+                    : `Всего ${visible.length} ${pluralize(visible.length, 'вариант', 'варианта', 'вариантов')}${hubs.length ? `, из них с пересадкой через ${hubs.join(' или ')}` : ''}.`,
                   earliestDeparture
                     ? `Раньше всего выезд в ${formatTime(earliestDeparture.departureAt)}, на месте в ${formatTime(earliestDeparture.arrivalAt)}.`
                     : '',
@@ -199,7 +217,10 @@ export function RouteSearch() {
               }}
             >
               <div style={{ fontSize: 15, color: COLORS.muted }}>
-                {chains.length} {pluralize(chains.length, 'вариант', 'варианта', 'вариантов')}
+                {visible.length} {pluralize(visible.length, 'вариант', 'варианта', 'вариантов')}
+                {hiddenByFilters > 0
+                  ? ` · ${hiddenByFilters} ${pluralize(hiddenByFilters, 'скрыт', 'скрыто', 'скрыто')} условиями`
+                  : ''}
               </div>
               <div
                 style={{

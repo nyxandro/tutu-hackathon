@@ -19,11 +19,13 @@ export function SearchForm({
   to,
   date,
   showExamples,
+  constraints,
   onFrom,
   onTo,
   onDate,
   onSearch,
   onExample,
+  onConstraint,
 }: {
   from: string;
   to: string;
@@ -34,9 +36,10 @@ export function SearchForm({
   onDate: (value: string) => void;
   onSearch: () => void;
   onExample: (example: { origin: string; destination: string }) => void;
+  constraints: Record<string, boolean>;
+  onConstraint: (key: string) => void;
 }) {
   const [extrasOpen, setExtrasOpen] = useState(false);
-  const [constraints, setConstraints] = useState<Record<string, boolean>>({});
 
   return (
     <div style={{ background: COLORS.headerBg, padding: '22px 24px 30px' }}>
@@ -146,9 +149,7 @@ export function SearchForm({
                   return (
                     <button
                       key={item.key}
-                      onClick={() =>
-                        setConstraints((prev) => ({ ...prev, [item.key]: !prev[item.key] }))
-                      }
+                      onClick={() => onConstraint(item.key)}
                       style={{
                         height: 38,
                         padding: '0 16px',
