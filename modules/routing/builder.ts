@@ -12,18 +12,11 @@
  * - RouteChain, RouteLeg, RouteSearchResult — типы результата для UI
  */
 
-import {
-  LAYOVER_DEFAULT_MIN,
-  LAYOVER_MIN,
-  MAX_HUBS_PER_SEARCH,
-  RESCUE_HOTELS_LIMIT,
-  ROUTE_CHAINS_LIMIT,
-  STAY_LOOKAHEAD_DAYS,
-} from '@/lib/config';
-import { callTutu } from '@/lib/mcp';
-import { resolveHub } from '@/lib/region-hubs';
-import { suggestHubs } from '@/lib/hub-suggest';
-import type { HotelOffer, TransportOffer, TutuToolPayload } from '@/lib/tutu-types';
+import { LAYOVER_DEFAULT_MIN, LAYOVER_MIN, MAX_HUBS_PER_SEARCH, RESCUE_HOTELS_LIMIT, ROUTE_CHAINS_LIMIT, STAY_LOOKAHEAD_DAYS } from '@/modules/routing/config';
+import { callTutu } from '@/modules/tutu/client';
+import { resolveHub } from '@/modules/routing/hubs';
+import { suggestHubs } from '@/modules/routing/hub-suggest';
+import type { HotelOffer, TransportOffer, TutuToolPayload } from '@/modules/tutu/types';
 
 export type RouteLeg = {
   transport: string;

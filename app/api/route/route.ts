@@ -6,7 +6,7 @@
  * - POST — приём запроса «откуда / куда / когда»
  */
 
-import { buildRoutes } from '@/lib/route-builder';
+import { buildRoutes } from '@/modules/routing/builder';
 
 export const maxDuration = 120;
 

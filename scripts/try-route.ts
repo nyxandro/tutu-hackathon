@@ -4,7 +4,7 @@
  */
 
 import 'dotenv/config';
-import { buildRoutes } from '../lib/route-builder';
+import { buildRoutes } from '../modules/routing/builder';
 import { prisma } from '../lib/db';
 
 function time(iso: string) {

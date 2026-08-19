@@ -8,7 +8,7 @@
 
 'use client';
 
-import type { StayFallback } from '@/lib/route-builder';
+import type { StayFallback } from '@/modules/routing/builder';
 import { COLORS, formatRub } from '@/lib/design';
 import { pluralize } from '@/lib/format';
 

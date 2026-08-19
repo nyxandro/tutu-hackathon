@@ -15,7 +15,7 @@
 
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { generateText } from 'ai';
-import { HUB_SUGGEST_MODEL, HUB_SUGGEST_TIMEOUT_MS, MAX_SUGGESTED_HUBS } from '@/lib/config';
+import { HUB_SUGGEST_MODEL, HUB_SUGGEST_TIMEOUT_MS, MAX_SUGGESTED_HUBS } from '@/modules/routing/config';
 
 const SYSTEM_PROMPT = `Ты знаешь транспортную географию России: какие города связаны
 поездами и междугородними автобусами. Отвечай строго JSON без пояснений.`;

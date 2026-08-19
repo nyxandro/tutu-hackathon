@@ -13,7 +13,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 import { prisma } from '../lib/db';
-import { WARM_CACHE_TTL_MS } from '../lib/config';
+import { WARM_CACHE_TTL_MS } from '../modules/tutu/config';
 
 const FIXTURES_DIR = join(process.cwd(), 'fixtures');
 

@@ -9,7 +9,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import type { RouteChain, RouteSearchResult } from '@/lib/route-builder';
+import type { RouteChain, RouteSearchResult } from '@/modules/routing/builder';
 import { ROUTE_EXAMPLES, SEARCH_STAGE_MS } from '@/lib/config';
 import { COLORS, formatRub } from '@/lib/design';
 import { formatTime, pluralize } from '@/lib/format';

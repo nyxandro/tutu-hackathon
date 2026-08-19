@@ -6,8 +6,8 @@
  */
 
 import 'dotenv/config';
-import { getTutuTools } from '../lib/mcp';
-import { extractList, type TutuToolPayload } from '../lib/tutu-types';
+import { getTutuTools } from '../modules/tutu/client';
+import { extractList, type TutuToolPayload } from '../modules/tutu/types';
 import { prisma } from '../lib/db';
 
 const SEARCH_ARGS = {

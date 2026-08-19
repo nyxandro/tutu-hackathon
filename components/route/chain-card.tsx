@@ -8,7 +8,7 @@
 
 'use client';
 
-import type { RouteChain, RouteLeg } from '@/lib/route-builder';
+import type { RouteChain, RouteLeg } from '@/modules/routing/builder';
 import {
   COLORS,
   TRANSPORT_ICONS,

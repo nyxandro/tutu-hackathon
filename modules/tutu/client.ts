@@ -14,20 +14,14 @@
 import { createMCPClient } from '@ai-sdk/mcp';
 import { tool, type ToolSet } from 'ai';
 import { createHash } from 'node:crypto';
-import {
-  MCP_CACHE_TTL_MS,
-  MCP_CLIENT_NAME,
-  MCP_SERVER_URL,
-  MODEL_OFFERS_LIMIT,
-  MODEL_PAYLOAD_MAX_CHARS,
-} from '@/lib/config';
+import { MCP_CACHE_TTL_MS, MCP_CLIENT_NAME, MCP_SERVER_URL, MODEL_OFFERS_LIMIT, MODEL_PAYLOAD_MAX_CHARS } from '@/modules/tutu/config';
 import { prisma } from '@/lib/db';
 import {
   extractList,
   type HotelOffer,
   type TransportOffer,
   type TutuToolPayload,
-} from '@/lib/tutu-types';
+} from '@/modules/tutu/types';
 
 // Один клиент на процесс: переподключение на каждый запрос стоит лишнего
 // раунд-трипа, а hot reload в dev иначе плодит соединения.

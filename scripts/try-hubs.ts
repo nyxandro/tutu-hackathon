@@ -4,7 +4,7 @@
  */
 
 import 'dotenv/config';
-import { suggestHubs } from '../lib/hub-suggest';
+import { suggestHubs } from '../modules/routing/hub-suggest';
 
 async function main() {
   const [origin, destination] = process.argv.slice(2);

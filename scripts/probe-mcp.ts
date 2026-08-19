@@ -6,7 +6,7 @@
  */
 
 import { createMCPClient } from '@ai-sdk/mcp';
-import { MCP_CLIENT_NAME, MCP_SERVER_URL } from '../lib/config';
+import { MCP_CLIENT_NAME, MCP_SERVER_URL } from '../modules/tutu/config';
 
 async function main() {
   const client = await createMCPClient({
