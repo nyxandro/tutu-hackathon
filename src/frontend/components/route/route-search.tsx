@@ -64,7 +64,7 @@ export function RouteSearch() {
   // ненужные. В запрос уходят оставшиеся, а если выключенных нет — ничего.
   const [excluded, setExcluded] = useState<string[]>([]);
 
-  const { steps, chains, stay, summary, status, search } = useAgentSearch();
+  const { steps, chains, stay, summary, status, applied, search } = useAgentSearch();
   const { detect, status: geoStatus, result: geoResult } = useNearestCity();
 
   function run(query: Omit<SearchQuery, 'modes'>) {
@@ -75,7 +75,9 @@ export function RouteSearch() {
       excluded.length > 0
         ? TRANSPORT_MODES.map((mode) => mode.key).filter((key) => !excluded.includes(key))
         : undefined;
-    void search({ ...query, modes, travelers });
+    // Повторный поиск по уже показанной выдаче идёт с её же параметрами:
+    // число людей берётся из формы только для нового запроса.
+    void search({ ...query, modes, travelers: query.travelers ?? travelers });
   }
 
   // Условия применяются к готовым маршрутам: данные о времени и стыковках
@@ -192,7 +194,7 @@ export function RouteSearch() {
                 {otherDay
                   ? `${date === foundDates[0] ? '' : 'В этот день уехать нельзя — '}нашли маршрут на ${humanDay(foundDates[0])}`
                   : transfers.length === visible.length
-                    ? `Прямого рейса ${from} → ${to} нет`
+                    ? `Прямого рейса ${applied?.origin ?? from} → ${applied?.destination ?? to} нет`
                     : `Нашли ${visible.length} ${pluralize(visible.length, 'способ', 'способа', 'способов')} добраться`}
               </div>
               <div style={{ fontSize: 16, color: COLORS.inkSoft, lineHeight: 1.45 }}>
@@ -285,7 +287,7 @@ export function RouteSearch() {
             </div>
 
             {sorted.map((chain, index) => (
-              <ChainCard travelers={travelers} key={`${chain.hub ?? 'direct'}-${chain.departureAt}-${index}`} chain={chain} />
+              <ChainCard travelers={applied?.travelers ?? 1} key={`${chain.hub ?? 'direct'}-${chain.departureAt}-${index}`} chain={chain} />
             ))}
 
             {stay ? <HotelList stay={stay} anchorId={STAY_ANCHOR} coords={geoResult?.coords} /> : null}
@@ -314,7 +316,12 @@ export function RouteSearch() {
               onClick={() => {
                 const next = new Date(new Date(date).getTime() + MS_IN_DAY).toISOString().slice(0, 10);
                 setDate(next);
-                run({ origin: from, destination: to, date: next });
+                run({
+                  origin: applied?.origin ?? from,
+                  destination: applied?.destination ?? to,
+                  date: next,
+                  travelers: applied?.travelers,
+                });
               }}
               style={{
                 height: 52,
@@ -370,7 +377,14 @@ export function RouteSearch() {
                 Не удалось получить данные Туту. Попробуйте повторить запрос через минуту.
               </div>
               <button
-                onClick={() => run({ origin: from, destination: to, date })}
+                onClick={() =>
+                run({
+                  origin: applied?.origin ?? from,
+                  destination: applied?.destination ?? to,
+                  date: applied?.date ?? date,
+                  travelers: applied?.travelers,
+                })
+              }
                 style={{
                   height: 48,
                   padding: '0 22px',

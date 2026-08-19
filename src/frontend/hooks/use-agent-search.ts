@@ -51,6 +51,10 @@ export function useAgentSearch() {
   const [summary, setSummary] = useState('');
   const [status, setStatus] = useState<SearchStatus>('idle');
   const [fellBack, setFellBack] = useState(false);
+  // Запрос, по которому получена выдача на экране. Форма после запуска живёт
+  // своей жизнью: человек может править её под следующий поиск, и уже
+  // показанные карточки от этого меняться не должны.
+  const [applied, setApplied] = useState<SearchQuery | null>(null);
   const names = useRef(new Map<string, string>());
   // Аргументы вызова нужны, чтобы в результате назвать дату поиска.
   const inputs = useRef(new Map<string, Record<string, unknown>>());
@@ -120,6 +124,7 @@ export function useAgentSearch() {
       setStay(null);
       setSummary('');
       setFellBack(false);
+      setApplied(query);
       setStatus('running');
       names.current.clear();
       inputs.current.clear();
@@ -243,5 +248,5 @@ export function useAgentSearch() {
     [runPlain, ensureStay],
   );
 
-  return { steps, chains, stay, summary, status, fellBack, search };
+  return { steps, chains, stay, summary, status, fellBack, applied, search };
 }
