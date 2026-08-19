@@ -110,6 +110,7 @@ export function RouteSearch() {
         to={to}
         date={date}
         showExamples={idle}
+        compact={!idle}
         onFrom={setFrom}
         onTo={setTo}
         onDate={setDate}

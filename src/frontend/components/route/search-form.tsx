@@ -31,6 +31,7 @@ export function SearchForm({
   detecting,
   detected,
   detectError,
+  compact,
 }: {
   from: string;
   to: string;
@@ -49,6 +50,8 @@ export function SearchForm({
   detecting: boolean;
   detected: boolean;
   detectError: string | null;
+  /** После запуска поиска шапка сжимается: место нужно результатам. */
+  compact: boolean;
 }) {
 
   return (
@@ -61,7 +64,8 @@ export function SearchForm({
           `linear-gradient(180deg, rgba(21,12,86,.82) 0%, rgba(21,12,86,.90) 100%), url('/bg.jpg')`,
         backgroundSize: 'cover',
         backgroundPosition: 'center 35%',
-        padding: '22px 24px 30px',
+        padding: compact ? '18px 24px 24px' : '56px 24px 64px',
+        transition: 'padding .45s cubic-bezier(.4,0,.2,1)',
       }}
     >
       <div
@@ -83,24 +87,58 @@ export function SearchForm({
           }}
         >
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-            <span style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-.03em', color: '#FFFFFF' }}>
+            <span
+              style={{
+                fontSize: compact ? 22 : 30,
+                fontWeight: 800,
+                letterSpacing: '-.03em',
+                color: '#FFFFFF',
+                transition: 'font-size .45s cubic-bezier(.4,0,.2,1)',
+              }}
+            >
               как
             </span>
             <span
               style={{
-                fontSize: 22,
+                fontSize: compact ? 22 : 30,
                 fontWeight: 800,
                 letterSpacing: '-.03em',
                 color: COLORS.accentLight,
+                transition: 'font-size .45s cubic-bezier(.4,0,.2,1)',
               }}
             >
               доехать
             </span>
           </div>
-          <div style={{ fontSize: 15, color: COLORS.headerText }}>
+          <div
+            style={{
+              fontSize: compact ? 15 : 17,
+              color: COLORS.headerText,
+              transition: 'font-size .45s cubic-bezier(.4,0,.2,1)',
+            }}
+          >
             Находим, как доехать, когда прямого билета нет
           </div>
         </div>
+
+        {!compact ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxWidth: 620 }}>
+            <div
+              style={{
+                fontSize: 38,
+                fontWeight: 700,
+                lineHeight: 1.1,
+                letterSpacing: '-.03em',
+                color: '#FFFFFF',
+              }}
+            >
+              Прямого билета нет?
+            </div>
+            <div style={{ fontSize: 17, color: COLORS.headerText, lineHeight: 1.45 }}>
+              Соберём поездку через пересадку из билетов, которые продаются прямо сейчас.
+            </div>
+          </div>
+        ) : null}
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <form
