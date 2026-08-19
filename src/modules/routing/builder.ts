@@ -8,8 +8,10 @@
  * на живых данных и сводит стыковки по времени.
  *
  * Экспорты:
- * - buildRoutes() — основной сценарий поиска
- * - RouteChain, RouteLeg, RouteSearchResult — типы результата для UI
+ * - buildRoutes() — основной сценарий поиска (детерминированный путь)
+ * - searchLeg(), toLeg(), pairLegs(), dedupe() — кирпичи, из которых собирает
+ *   маршрут и агентный цикл: расчёты стыковок везде одни и те же
+ * - RouteChain, RouteLeg, RouteSearchResult, StayFallback — типы результата
  */
 
 import { LAYOVER_DEFAULT_MIN, LAYOVER_MIN, MAX_HUBS_PER_SEARCH, RESCUE_HOTELS_LIMIT, ROUTE_CHAINS_LIMIT, STAY_LOOKAHEAD_DAYS } from '@/modules/routing/config';
@@ -89,7 +91,7 @@ function layoverFor(from: string | undefined, to: string | undefined): number {
   return LAYOVER_MIN[from ?? '']?.[to ?? ''] ?? LAYOVER_DEFAULT_MIN;
 }
 
-function toLeg(offer: TransportOffer, fallbackFrom: string, fallbackTo: string): RouteLeg | null {
+export function toLeg(offer: TransportOffer, fallbackFrom: string, fallbackTo: string): RouteLeg | null {
   const departureAt = offer.departure_at;
   const arrivalAt = offer.arrival_at;
   const price = offer.price?.amount;
@@ -135,7 +137,7 @@ function directChain(leg: RouteLeg): RouteChain {
  * не меньше запаса для второго вида транспорта: на самолёт нужно приехать заранее,
  * на автобус — меньше.
  */
-function pairLegs(
+export function pairLegs(
   first: RouteLeg[],
   second: RouteLeg[],
   hub: string,
@@ -171,7 +173,7 @@ function pairLegs(
 }
 
 /** Оставляет по одной лучшей цепочке на каждую пару «первый рейс + узел». */
-function dedupe(chains: RouteChain[]): RouteChain[] {
+export function dedupe(chains: RouteChain[]): RouteChain[] {
   const best = new Map<string, RouteChain>();
 
   for (const chain of chains) {
@@ -190,7 +192,7 @@ function dedupe(chains: RouteChain[]): RouteChain[] {
  * одного плеча не должна ронять весь экран — вместо этого маршрут через этот
  * узел просто не построится, а причина попадёт в заметки.
  */
-async function searchLeg(origin: string, destination: string, date: string) {
+export async function searchLeg(origin: string, destination: string, date: string) {
   try {
     const payload = await callTutu('search_multitransport', {
       origin,

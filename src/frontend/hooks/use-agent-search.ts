@@ -1,0 +1,169 @@
+/**
+ * Чтение потока агентного поиска: превращает события инструментов в ленту шагов
+ * и собирает готовые маршруты.
+ *
+ * Если агент недоступен (нет ключа, модель молчит или упала), переключается на
+ * детерминированный поиск /api/route — экран обязан показать результат в любом
+ * случае, это важнее красивой ленты.
+ *
+ * Экспорты:
+ * - useAgentSearch() — состояние поиска: шаги, маршруты, статус
+ */
+
+'use client';
+
+import { useCallback, useRef, useState } from 'react';
+import type { RouteChain, RouteSearchResult } from '@/modules/routing/builder';
+import type { TraceStep } from '@/frontend/components/route/agent-trace';
+import { describeCall, describeResult } from '@/frontend/components/route/agent-trace-labels';
+
+export type SearchQuery = { origin: string; destination: string; date: string };
+export type SearchStatus = 'idle' | 'running' | 'done' | 'error';
+
+type ToolEvent = {
+  type: string;
+  toolCallId?: string;
+  toolName?: string;
+  input?: Record<string, unknown>;
+  output?: Record<string, unknown>;
+  delta?: string;
+};
+
+export function useAgentSearch() {
+  const [steps, setSteps] = useState<TraceStep[]>([]);
+  const [chains, setChains] = useState<RouteChain[]>([]);
+  const [summary, setSummary] = useState('');
+  const [status, setStatus] = useState<SearchStatus>('idle');
+  const [fellBack, setFellBack] = useState(false);
+  const names = useRef(new Map<string, string>());
+
+  /** Запасной путь: тот же поиск, но без модели. */
+  const runPlain = useCallback(async (query: SearchQuery) => {
+    setFellBack(true);
+    const response = await fetch('/api/route', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(query),
+    });
+    const data = await response.json();
+
+    if (!response.ok) {
+      setStatus('error');
+      return;
+    }
+
+    const result = data as RouteSearchResult;
+    setChains([...result.direct, ...result.transfers]);
+    setSteps(
+      result.notes.map((note, index) => ({ id: `note${index}`, action: note, result: '', empty: true })),
+    );
+    setStatus('done');
+  }, []);
+
+  const search = useCallback(
+    async (query: SearchQuery) => {
+      setSteps([]);
+      setChains([]);
+      setSummary('');
+      setFellBack(false);
+      setStatus('running');
+      names.current.clear();
+
+      let response: Response;
+      try {
+        response = await fetch('/api/agent', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(query),
+        });
+      } catch {
+        await runPlain(query);
+        return;
+      }
+
+      // Агент недоступен — молча уходим на детерминированный поиск.
+      if (!response.ok || !response.body) {
+        await runPlain(query);
+        return;
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let text = '';
+      const collected: RouteChain[] = [];
+
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() ?? '';
+
+          for (const line of lines) {
+            if (!line.startsWith('data: ')) continue;
+
+            let event: ToolEvent;
+            try {
+              event = JSON.parse(line.slice(6)) as ToolEvent;
+            } catch {
+              continue;
+            }
+
+            if (event.type === 'tool-input-available' && event.toolCallId && event.toolName) {
+              names.current.set(event.toolCallId, event.toolName);
+              const action = describeCall(event.toolName, event.input ?? {});
+              setSteps((prev) => [...prev, { id: event.toolCallId as string, action }]);
+            }
+
+            if (event.type === 'tool-output-available' && event.toolCallId) {
+              const toolName = names.current.get(event.toolCallId) ?? '';
+              const output = event.output ?? {};
+              const described = describeResult(toolName, output);
+
+              // Маршруты приходят полными — карточки строятся из данных Туту,
+              // а не из пересказа модели.
+              if (toolName === 'build_connections' && Array.isArray(output.chains)) {
+                collected.push(...(output.chains as RouteChain[]));
+                setChains([...collected]);
+              }
+
+              setSteps((prev) =>
+                prev.map((step) =>
+                  step.id === event.toolCallId
+                    ? { ...step, result: described.text, empty: described.empty }
+                    : step,
+                ),
+              );
+            }
+
+            if (event.type === 'text-delta' && event.delta) {
+              text += event.delta;
+              setSummary(text.trim());
+            }
+          }
+        }
+      } catch {
+        // Поток оборвался на середине — показываем то, что успели собрать.
+        if (collected.length === 0) {
+          await runPlain(query);
+          return;
+        }
+      }
+
+      // Агент отработал, но ничего не нашёл — пробуем обычный поиск,
+      // возможно прямые рейсы есть, а модель до них не дошла.
+      if (collected.length === 0) {
+        await runPlain(query);
+        return;
+      }
+
+      setStatus('done');
+    },
+    [runPlain],
+  );
+
+  return { steps, chains, summary, status, fellBack, search };
+}
