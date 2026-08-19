@@ -138,25 +138,6 @@ export function SearchForm({
           </div>
         </div>
 
-        {!compact ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 680 }}>
-            <div
-              style={{
-                fontSize: 54,
-                fontWeight: 800,
-                lineHeight: 1.05,
-                letterSpacing: '-.03em',
-                color: '#FFFFFF',
-              }}
-            >
-              Прямого билета нет?
-            </div>
-            <div style={{ fontSize: 20, color: COLORS.headerText, lineHeight: 1.45 }}>
-              Соберём поездку через пересадку из билетов, которые продаются прямо сейчас.
-            </div>
-          </div>
-        ) : null}
-
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <form
             onSubmit={(event) => {
