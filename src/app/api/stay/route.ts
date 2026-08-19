@@ -9,6 +9,7 @@
 
 import { HOTEL_DETAILS_LIMIT, RESCUE_HOTELS_LIMIT } from '@/modules/routing/config';
 import { callTutu } from '@/modules/tutu/client';
+import { MAX_TRAVELERS } from '@/modules/routing/config';
 import type { HotelOffer } from '@/modules/tutu/types';
 
 export const maxDuration = 90;
@@ -17,6 +18,8 @@ type StayRequest = {
   city?: string;
   checkIn?: string;
   checkOut?: string;
+  /** Сколько взрослых ночует. Отсутствует — считаем, что один. */
+  travelers?: number;
 };
 
 function priceOf(hotel: HotelOffer): number | undefined {
@@ -24,7 +27,12 @@ function priceOf(hotel: HotelOffer): number | undefined {
 }
 
 /** Полный адрес, телефоны и время заезда есть только в деталях предложения. */
-async function enrich(hotel: HotelOffer, checkIn: string, checkOut: string): Promise<HotelOffer> {
+async function enrich(
+  hotel: HotelOffer,
+  checkIn: string,
+  checkOut: string,
+  adults: number,
+): Promise<HotelOffer> {
   if (!hotel.hotel_id) return hotel;
 
   try {
@@ -34,7 +42,7 @@ async function enrich(hotel: HotelOffer, checkIn: string, checkOut: string): Pro
         hotel_id: hotel.hotel_id,
         check_in: checkIn,
         check_out: checkOut,
-        adults: 1,
+        adults,
         view: 'compact',
       })) as { hotel?: Record<string, unknown> }
     ).hotel;
@@ -59,7 +67,9 @@ async function enrich(hotel: HotelOffer, checkIn: string, checkOut: string): Pro
 }
 
 export async function POST(req: Request) {
-  const { city, checkIn, checkOut }: StayRequest = await req.json();
+  const { city, checkIn, checkOut, travelers }: StayRequest = await req.json();
+  // Номер ищем на всю компанию: одному человеку и четверым нужны разные варианты.
+  const partySize = Math.min(Math.max(Math.round(travelers ?? 1), 1), MAX_TRAVELERS);
 
   if (!city?.trim() || !checkIn?.trim() || !checkOut?.trim()) {
     return Response.json(
@@ -73,7 +83,7 @@ export async function POST(req: Request) {
       city_name: city.trim(),
       check_in: checkIn.trim(),
       check_out: checkOut.trim(),
-      adults: 1,
+      adults: partySize,
       view: 'compact',
     });
 
@@ -85,7 +95,7 @@ export async function POST(req: Request) {
       city_name: city.trim(),
       check_in: checkIn.trim(),
       check_out: checkOut.trim(),
-      adults: 1,
+      adults: partySize,
       hotel_amenities: ['pet_friendly'],
       view: 'compact',
     }).catch(() => ({ hotels: [] }) as { hotels: HotelOffer[] });
@@ -103,7 +113,7 @@ export async function POST(req: Request) {
 
     const hotels = await Promise.all(
       cheapest.map(async (hotel, index) => {
-        const base = index < HOTEL_DETAILS_LIMIT ? await enrich(hotel, checkIn, checkOut) : hotel;
+        const base = index < HOTEL_DETAILS_LIMIT ? await enrich(hotel, checkIn, checkOut, partySize) : hotel;
         return { ...base, petFriendly: petIds.has(base.hotel_id ?? '') };
       }),
     );

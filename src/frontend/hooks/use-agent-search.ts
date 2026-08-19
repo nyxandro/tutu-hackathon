@@ -18,7 +18,14 @@ import type { HotelOffer } from '@/modules/tutu/types';
 import type { TraceStep } from '@/frontend/components/route/agent-trace';
 import { describeCall, describeResult } from '@/frontend/components/route/agent-trace-labels';
 
-export type SearchQuery = { origin: string; destination: string; date: string; modes?: string[] };
+export type SearchQuery = {
+  origin: string;
+  destination: string;
+  date: string;
+  modes?: string[];
+  /** Сколько взрослых едет: влияет на наличие мест и на цену от Туту. */
+  travelers?: number;
+};
 export type StayOffer = {
   city: string;
   checkIn: string;
@@ -89,6 +96,7 @@ export function useAgentSearch() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             city: query.origin,
+            travelers: query.travelers,
             checkIn: query.date,
             // Ночуем до дня отъезда: столько ночей, сколько реально ждать.
             checkOut: dates.sort()[0],

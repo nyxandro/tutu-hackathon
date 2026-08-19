@@ -39,6 +39,8 @@ export type AgentSession = {
   target: string;
   /** Виды транспорта, которыми человек готов ехать. Пусто — любые. */
   modes: string[];
+  /** Сколько взрослых едет: влияет на наличие мест и на цену от Туту. */
+  travelers: number;
   /** Гостиницы запасного плана, если поездку пришлось перенести. */
   hotels?: { city: string; checkIn: string; checkOut: string; list: HotelOffer[] };
   next: () => string;
@@ -46,7 +48,12 @@ export type AgentSession = {
   describe: () => string;
 };
 
-export function createSession(target: string, deadlineMs: number, modes: string[] = []): AgentSession {
+export function createSession(
+  target: string,
+  deadlineMs: number,
+  modes: string[] = [],
+  travelers = 1,
+): AgentSession {
   let counter = 0;
   const session: AgentSession = {
     legs: new Map(),
@@ -56,6 +63,7 @@ export function createSession(target: string, deadlineMs: number, modes: string[
     deadline: Date.now() + deadlineMs,
     target,
     modes,
+    travelers,
     next: () => `leg${++counter}`,
     describe: () => {
       const hubs = [...session.triedHubs.entries()]

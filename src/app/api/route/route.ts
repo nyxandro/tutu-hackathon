@@ -7,6 +7,7 @@
  */
 
 import { buildRoutes } from '@/modules/routing/builder';
+import { MAX_TRAVELERS } from '@/modules/routing/config';
 
 export const maxDuration = 120;
 
@@ -15,10 +16,12 @@ type RouteRequest = {
   destination?: string;
   date?: string;
   modes?: string[];
+  /** Сколько взрослых едет. Отсутствует — считаем, что один. */
+  travelers?: number;
 };
 
 export async function POST(req: Request) {
-  const { origin, destination, date }: RouteRequest = await req.json();
+  const { origin, destination, date, travelers }: RouteRequest = await req.json();
 
   // Все три поля обязательны: MCP Туту не умеет искать без направления,
   // и подставлять что-то за пользователя нельзя.
@@ -33,7 +36,9 @@ export async function POST(req: Request) {
   }
 
   try {
-    const result = await buildRoutes(origin.trim(), destination.trim(), date.trim());
+    // Число людей нормализуем: в Туту нельзя отправить дробное или нулевое.
+    const partySize = Math.min(Math.max(Math.round(travelers ?? 1), 1), MAX_TRAVELERS);
+    const result = await buildRoutes(origin.trim(), destination.trim(), date.trim(), partySize);
     return Response.json(result);
   } catch (error) {
     // Граница UI: наверх уходит понятный текст, подробности — в лог.

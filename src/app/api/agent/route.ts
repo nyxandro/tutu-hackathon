@@ -21,6 +21,7 @@ import { buildAgentPrompt } from '@/modules/agent/prompt';
 import { createSession } from '@/modules/agent/session';
 import { createAgentTools } from '@/modules/agent/tools';
 import type { RouteChain } from '@/modules/routing/builder';
+import { MAX_TRAVELERS } from '@/modules/routing/config';
 
 export const maxDuration = 180;
 
@@ -30,6 +31,8 @@ type AgentRequest = {
   date?: string;
   /** Виды транспорта: пусто или отсутствует — искать любым. */
   modes?: string[];
+  /** Сколько взрослых едет. Отсутствует — считаем, что один. */
+  travelers?: number;
 };
 
 export async function POST(req: Request) {
@@ -47,7 +50,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const { origin, destination, date, modes }: AgentRequest = await req.json();
+  const { origin, destination, date, modes, travelers }: AgentRequest = await req.json();
 
   if (!origin?.trim() || !destination?.trim() || !date?.trim()) {
     return Response.json(
@@ -59,7 +62,10 @@ export async function POST(req: Request) {
     );
   }
 
-  const session = createSession(destination.trim(), AGENT_TIMEOUT_MS, modes ?? []);
+  // Число людей нормализуем здесь: дальше по коду оно уходит в Туту, а тот
+  // на дробном или нулевом значении отвечает ошибкой.
+  const partySize = Math.min(Math.max(Math.round(travelers ?? 1), 1), MAX_TRAVELERS);
+  const session = createSession(destination.trim(), AGENT_TIMEOUT_MS, modes ?? [], partySize);
   // Сюда инструменты складывают готовые маршруты: их рисует интерфейс,
   // модель их не пересказывает и потому не может исказить.
   const collected: RouteChain[] = [];
@@ -70,6 +76,9 @@ export async function POST(req: Request) {
     `Найди, как добраться: ${origin.trim()} → ${destination.trim()}, дата ${date.trim()}.` +
     (modes?.length
       ? ` Человек готов ехать только этим транспортом: ${modes.join(', ')}. Поиск уже сужен, отдельно фильтровать не нужно.`
+      : '') +
+    (partySize > 1
+      ? ` Едут ${partySize} взрослых: поиск уже учитывает это, цены приходят сразу за всех.`
       : '');
 
   return createUIMessageStreamResponse({

@@ -18,6 +18,7 @@ import {
   hubIn,
 } from '@/frontend/design';
 import { formatDate, formatTime } from '@/frontend/format';
+import { describeTravelers } from '@/frontend/components/route/travelers-picker';
 
 function Icon({ name, size = 20, color }: { name: string; size?: number; color?: string }) {
   return (
@@ -179,8 +180,17 @@ function Layover({ chain }: { chain: RouteChain }) {
   );
 }
 
-export function ChainCard({ chain }: { chain: RouteChain }) {
+export function ChainCard({ chain, travelers = 1 }: { chain: RouteChain; travelers?: number }) {
   const isTransfer = chain.kind === 'transfer';
+  // Туту считает цену сразу на всю компанию, поэтому подпись объясняет, что
+  // сумма уже итоговая, а не за одного человека.
+  const priceNote = isTransfer
+    ? travelers > 1
+      ? `за все билеты, ${describeTravelers(travelers)}`
+      : 'за два билета'
+    : travelers > 1
+      ? `за все билеты, ${describeTravelers(travelers)}`
+      : 'один билет';
 
   return (
     <div
@@ -236,9 +246,7 @@ export function ChainCard({ chain }: { chain: RouteChain }) {
           >
             {formatRub(chain.totalPrice)}
           </span>
-          <span style={{ fontSize: 13, color: COLORS.mutedSoft }}>
-            {isTransfer ? 'за два билета' : 'один билет'}
-          </span>
+          <span style={{ fontSize: 13, color: COLORS.mutedSoft }}>{priceNote}</span>
         </div>
       </div>
 

@@ -45,7 +45,12 @@ function priceOf(hotel: HotelOffer): number | undefined {
  * Дотягивает адрес, телефоны и время заезда: в результатах поиска их нет,
  * там только расстояние до центра.
  */
-async function enrich(hotel: HotelOffer, checkIn: string, checkOut: string): Promise<HotelOffer> {
+async function enrich(
+  hotel: HotelOffer,
+  checkIn: string,
+  checkOut: string,
+  adults: number,
+): Promise<HotelOffer> {
   if (!hotel.hotel_id) return hotel;
 
   const attempt = await withRetry(`детали отеля ${hotel.name ?? hotel.hotel_id}`, () =>
@@ -54,7 +59,7 @@ async function enrich(hotel: HotelOffer, checkIn: string, checkOut: string): Pro
       hotel_id: hotel.hotel_id,
       check_in: checkIn,
       check_out: checkOut,
-      adults: 1,
+      adults,
       view: 'compact',
     }),
   );
@@ -163,9 +168,15 @@ export function createAgentTools(session: AgentSession, collected: RouteChain[])
         // Ночная стыковка: рейсы следующего дня нужны только второму плечу,
         // иначе завтрашние прямые попадут в сегодняшний вердикт.
         const attempt = await withRetry(`${origin} → ${destination}`, async () => {
-          const sameDay = await searchLeg(origin, destination, date, session.modes);
+          const sameDay = await searchLeg(origin, destination, date, session.modes, session.travelers);
           if (!alsoNextDay) return sameDay;
-          const nextDay = await searchLeg(origin, destination, shiftDay(date, 1), session.modes);
+          const nextDay = await searchLeg(
+            origin,
+            destination,
+            shiftDay(date, 1),
+            session.modes,
+            session.travelers,
+          );
           return {
             ...sameDay,
             offers: [...sameDay.offers, ...nextDay.offers],
@@ -351,7 +362,7 @@ export function createAgentTools(session: AgentSession, collected: RouteChain[])
             city_name: city,
             check_in,
             check_out,
-            adults: 1,
+            adults: session.travelers,
             view: 'compact',
           }),
         );
@@ -376,7 +387,7 @@ export function createAgentTools(session: AgentSession, collected: RouteChain[])
             city_name: city,
             check_in,
             check_out,
-            adults: 1,
+            adults: session.travelers,
             hotel_amenities: ['pet_friendly'],
             view: 'compact',
           }),
@@ -401,7 +412,7 @@ export function createAgentTools(session: AgentSession, collected: RouteChain[])
         const withDetails = await Promise.all(
           cheapest.map(async (hotel, index) => {
             const base =
-              index < HOTEL_DETAILS_LIMIT ? await enrich(hotel, check_in, check_out) : hotel;
+              index < HOTEL_DETAILS_LIMIT ? await enrich(hotel, check_in, check_out, session.travelers) : hotel;
             return { ...base, petFriendly: petIds.has(base.hotel_id ?? '') };
           }),
         );

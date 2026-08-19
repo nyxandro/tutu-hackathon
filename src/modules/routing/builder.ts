@@ -200,6 +200,7 @@ export async function searchLeg(
   destination: string,
   date: string,
   modes?: string[],
+  adults?: number,
 ) {
   try {
     const payload = await callTutu('search_multitransport', {
@@ -209,6 +210,9 @@ export async function searchLeg(
       // Пустой список означает «любой транспорт»: параметр не передаём вовсе,
       // иначе Туту вернёт пусто.
       ...(modes && modes.length > 0 ? { modes } : {}),
+      // Мультитранспорт принимает только взрослых и считает цену сразу за всю
+      // компанию — умножать её на число людей нельзя.
+      ...(adults && adults > 1 ? { adults } : {}),
       view: 'compact',
     });
 
@@ -306,6 +310,7 @@ export async function buildRoutes(
   origin: string,
   destination: string,
   date: string,
+  adults?: number,
 ): Promise<RouteSearchResult> {
   const notes: string[] = [];
   const result: RouteSearchResult = {
@@ -316,7 +321,7 @@ export async function buildRoutes(
     notes,
   };
 
-  const straight = await searchLeg(origin, destination, date);
+  const straight = await searchLeg(origin, destination, date, undefined, adults);
   result.destinationRegion = straight.region;
 
   if (straight.failed) {
@@ -376,8 +381,8 @@ export async function buildRoutes(
       (_, index) => shiftDate(date, index + 1),
     )];
     const [toHub, ...fromHubByDate] = await Promise.all([
-      searchLeg(origin, hub, date),
-      ...secondLegDates.map((legDate) => searchLeg(hub, destination, legDate)),
+      searchLeg(origin, hub, date, undefined, adults),
+      ...secondLegDates.map((legDate) => searchLeg(hub, destination, legDate, undefined, adults)),
     ]);
     const fromHub = {
       offers: fromHubByDate.flatMap((result) => result.offers),

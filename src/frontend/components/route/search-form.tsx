@@ -12,6 +12,7 @@ import { ROUTE_EXAMPLES, TRANSPORT_MODES, TRAVEL_CONSTRAINTS } from '@/frontend/
 import { COLORS, TRANSPORT_ICONS } from '@/frontend/design';
 import { CityInput } from '@/frontend/components/route/city-input';
 import { DatePicker } from '@/frontend/components/route/date-picker';
+import { TravelersPicker } from '@/frontend/components/route/travelers-picker';
 
 export function SearchForm({
   from,
@@ -23,6 +24,8 @@ export function SearchForm({
   onFrom,
   onTo,
   onDate,
+  travelers,
+  onTravelers,
   onSearch,
   onExample,
   onConstraint,
@@ -40,6 +43,8 @@ export function SearchForm({
   onFrom: (value: string) => void;
   onTo: (value: string) => void;
   onDate: (value: string) => void;
+  travelers: number;
+  onTravelers: (count: number) => void;
   onSearch: () => void;
   onExample: (example: { origin: string; destination: string }) => void;
   constraints: Record<string, boolean>;
@@ -176,6 +181,8 @@ export function SearchForm({
             <CityInput label="Куда" value={to} onChange={onTo} placeholder="Углич" />
 
             <DatePicker value={date} onChange={onDate} />
+
+            <TravelersPicker value={travelers} onChange={onTravelers} />
 
             <button
               type="submit"

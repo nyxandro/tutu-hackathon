@@ -51,6 +51,9 @@ export function RouteSearch() {
     const pad = (value: number) => String(value).padStart(2, '0');
     return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
   });
+  // Сколько взрослых едет: уходит прямо в Туту, поэтому цены в выдаче
+  // приходят сразу за всю компанию.
+  const [travelers, setTravelers] = useState(1);
   // По умолчанию — раньше уехать: человеку, который не может выбраться, важнее
   // всего не ждать, а не выиграть час в дороге.
   const [sort, setSort] = useState<Sort>('departure');
@@ -69,7 +72,7 @@ export function RouteSearch() {
       excluded.length > 0
         ? TRANSPORT_MODES.map((mode) => mode.key).filter((key) => !excluded.includes(key))
         : undefined;
-    void search({ ...query, modes });
+    void search({ ...query, modes, travelers });
   }
 
   // Условия применяются к готовым маршрутам: данные о времени и стыковках
@@ -119,6 +122,8 @@ export function RouteSearch() {
         onFrom={setFrom}
         onTo={setTo}
         onDate={setDate}
+        travelers={travelers}
+        onTravelers={setTravelers}
         constraints={constraints}
         onConstraint={(key) => setConstraints((prev) => ({ ...prev, [key]: !prev[key] }))}
         excluded={excluded}
@@ -277,7 +282,7 @@ export function RouteSearch() {
             </div>
 
             {sorted.map((chain, index) => (
-              <ChainCard key={`${chain.hub ?? 'direct'}-${chain.departureAt}-${index}`} chain={chain} />
+              <ChainCard travelers={travelers} key={`${chain.hub ?? 'direct'}-${chain.departureAt}-${index}`} chain={chain} />
             ))}
 
             {stay ? <HotelList stay={stay} anchorId={STAY_ANCHOR} coords={geoResult?.coords} /> : null}
