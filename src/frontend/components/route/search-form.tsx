@@ -52,7 +52,18 @@ export function SearchForm({
 }) {
 
   return (
-    <div style={{ background: COLORS.headerBg, padding: '22px 24px 30px' }}>
+    <div
+      style={{
+        // Фотография с затемнением: без слоя поверх белый текст и поля на
+        // светлых участках снимка становятся нечитаемыми.
+        backgroundColor: COLORS.headerBg,
+        backgroundImage:
+          `linear-gradient(180deg, rgba(21,12,86,.82) 0%, rgba(21,12,86,.90) 100%), url('/bg.jpg')`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center 35%',
+        padding: '22px 24px 30px',
+      }}
+    >
       <div
         style={{
           maxWidth: 1000,
