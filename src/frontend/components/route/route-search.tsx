@@ -24,6 +24,17 @@ type Sort = 'arrival' | 'price';
 
 const MS_IN_DAY = 24 * 60 * 60 * 1000;
 
+const MONTHS = [
+  'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
+  'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря',
+];
+
+function humanDay(iso: string): string {
+  const date = new Date(`${iso}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return iso;
+  return `${date.getDate()} ${MONTHS[date.getMonth()]}`;
+}
+
 export function RouteSearch() {
   const [from, setFrom] = useState('Москва');
   const [to, setTo] = useState('');
@@ -46,6 +57,12 @@ export function RouteSearch() {
   const cheapest = [...chains].sort((a, b) => a.totalPrice - b.totalPrice)[0];
   const transfers = chains.filter((chain) => chain.kind === 'transfer');
   const hubs = [...new Set(transfers.map((chain) => chain.hub).filter(Boolean))];
+
+  // Агент мог найти маршрут на другой день: в запрошенный не сходилось
+  // расписание. Об этом надо сказать прямо, иначе человек решит, что уезжает
+  // сегодня, и опоздает на сутки.
+  const foundDates = [...new Set(chains.map((chain) => chain.departureAt.slice(0, 10)))];
+  const otherDay = foundDates.length > 0 && !foundDates.includes(date);
 
   const idle = status === 'idle';
   const running = status === 'running';
@@ -104,9 +121,11 @@ export function RouteSearch() {
                   color: COLORS.ink,
                 }}
               >
-                {transfers.length === chains.length
-                  ? `Прямого рейса ${from} → ${to} нет`
-                  : `Нашли ${chains.length} ${pluralize(chains.length, 'способ', 'способа', 'способов')} добраться`}
+                {otherDay
+                  ? `${date === foundDates[0] ? '' : 'В этот день уехать нельзя — '}нашли маршрут на ${humanDay(foundDates[0])}`
+                  : transfers.length === chains.length
+                    ? `Прямого рейса ${from} → ${to} нет`
+                    : `Нашли ${chains.length} ${pluralize(chains.length, 'способ', 'способа', 'способов')} добраться`}
               </div>
               <div style={{ fontSize: 16, color: COLORS.inkSoft, lineHeight: 1.45 }}>
                 {summary ||

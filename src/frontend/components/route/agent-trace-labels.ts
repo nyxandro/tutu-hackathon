@@ -9,13 +9,27 @@
 type ToolInput = Record<string, unknown>;
 type ToolOutput = Record<string, unknown>;
 
+const MONTHS = [
+  'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
+  'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря',
+];
+
+/** «2026-08-19» → «19 августа». Без даты шаги выглядят как повторы одного и того же. */
+function humanDate(iso: unknown): string {
+  if (typeof iso !== 'string') return '';
+  const date = new Date(`${iso}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return '';
+  return `${date.getDate()} ${MONTHS[date.getMonth()]}`;
+}
+
 export function describeCall(toolName: string, input: ToolInput): string {
   const from = String(input.origin ?? '');
   const to = String(input.destination ?? '');
+  const when = humanDate(input.date);
 
   switch (toolName) {
     case 'search_leg':
-      return `Смотрю рейсы: ${from} → ${to}`;
+      return `Смотрю рейсы: ${from} → ${to}${when ? `, ${when}` : ''}`;
     case 'suggest_hubs':
       return 'Ищу, через какие города можно проехать';
     case 'build_connections':
@@ -30,7 +44,9 @@ export function describeCall(toolName: string, input: ToolInput): string {
 export function describeResult(
   toolName: string,
   output: ToolOutput,
+  input: ToolInput = {},
 ): { text: string; empty: boolean } {
+  const when = humanDate(input.date);
   if (typeof output.error === 'string') {
     return { text: output.error, empty: true };
   }
@@ -43,7 +59,9 @@ export function describeResult(
 
   switch (toolName) {
     case 'search_leg': {
-      if (count === 0) return { text: 'прямых рейсов нет', empty: true };
+      if (count === 0) {
+        return { text: when ? `на ${when} рейсов нет` : 'рейсов нет', empty: true };
+      }
       const transports = Array.isArray(output.transports) ? output.transports : [];
       const labels: Record<string, string> = {
         bus: 'автобусы',
@@ -64,7 +82,14 @@ export function describeResult(
     }
 
     case 'build_connections': {
-      if (!count) return { text: 'рейсы есть, но по времени не стыкуются', empty: true };
+      if (!count) {
+        return {
+          text: when
+            ? `${when} рейсы по времени не сходятся — стоит проверить другой день`
+            : 'рейсы по времени не сходятся',
+          empty: true,
+        };
+      }
       return { text: `${count} — маршрут собран`, empty: false };
     }
 

@@ -37,6 +37,8 @@ export function useAgentSearch() {
   const [status, setStatus] = useState<SearchStatus>('idle');
   const [fellBack, setFellBack] = useState(false);
   const names = useRef(new Map<string, string>());
+  // Аргументы вызова нужны, чтобы в результате назвать дату поиска.
+  const inputs = useRef(new Map<string, Record<string, unknown>>());
 
   /** Запасной путь: тот же поиск, но без модели. */
   const runPlain = useCallback(async (query: SearchQuery) => {
@@ -69,6 +71,7 @@ export function useAgentSearch() {
       setFellBack(false);
       setStatus('running');
       names.current.clear();
+      inputs.current.clear();
 
       let response: Response;
       try {
@@ -122,6 +125,7 @@ export function useAgentSearch() {
 
             if (event.type === 'tool-input-available' && event.toolCallId && event.toolName) {
               names.current.set(event.toolCallId, event.toolName);
+              inputs.current.set(event.toolCallId, event.input ?? {});
               const action = describeCall(event.toolName, event.input ?? {});
               const reasoning = thought.trim();
               thought = '';
@@ -134,7 +138,11 @@ export function useAgentSearch() {
             if (event.type === 'tool-output-available' && event.toolCallId) {
               const toolName = names.current.get(event.toolCallId) ?? '';
               const output = event.output ?? {};
-              const described = describeResult(toolName, output);
+              const described = describeResult(
+                toolName,
+                output,
+                inputs.current.get(event.toolCallId) ?? {},
+              );
 
               // Маршруты приходят полными — карточки строятся из данных Туту,
               // а не из пересказа модели.
