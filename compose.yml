@@ -1,0 +1,53 @@
+# Прод-запуск на сервере: приложение и его база. Порт наружу не публикуем,
+# трафик приходит через общий Traefik по сети web_gateway.
+services:
+  app:
+    build: .
+    container_name: kak-dobratsya-app
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://tutu:${DB_PASSWORD}@db:5432/tutu
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+      NODE_ENV: production
+    depends_on:
+      db:
+        condition: service_healthy
+    # Миграции накатывает deploy.sh отдельным контейнером из стадии сборки:
+    # в лёгком рантайм-образе нет зависимостей Prisma CLI, а тащить их туда
+    # ради одной таблицы дороже, чем сделать отдельный шаг.
+    command: node server.js
+    networks:
+      - default
+      - web_gateway
+    labels:
+      traefik.enable: 'true'
+      traefik.docker.network: web_gateway
+      traefik.http.routers.tutu.rule: Host(`${APP_HOST}`)
+      traefik.http.routers.tutu.entrypoints: websecure
+      traefik.http.routers.tutu.tls.certresolver: letsencrypt
+      traefik.http.services.tutu.loadbalancer.server.port: '3100'
+
+  db:
+    image: postgres:18-alpine
+    container_name: kak-dobratsya-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: tutu
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: tutu
+    # postgres:18 монтирует том в /var/lib/postgresql, а не в /data:
+    # с прежним путём контейнер уходит в бесконечный рестарт.
+    volumes:
+      - db-data:/var/lib/postgresql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U tutu -d tutu']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  db-data:
+
+networks:
+  web_gateway:
+    external: true
