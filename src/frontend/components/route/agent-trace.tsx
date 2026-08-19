@@ -35,7 +35,41 @@ export function AgentTrace({ steps, done }: { steps: TraceStep[]; done: boolean 
     return () => clearTimeout(timer);
   }, [done]);
 
-  if (steps.length === 0) return null;
+  // Первый шаг приходит через несколько секунд: модель успевает подумать
+  // и только потом зовёт инструмент. Без заглушки экран в это время пустой,
+  // и поиск выглядит сломанным.
+  if (steps.length === 0) {
+    if (done) return null;
+
+    return (
+      <div
+        style={{
+          background: COLORS.surface,
+          borderRadius: 20,
+          boxShadow: '0 4px 18px rgba(21,12,86,.06)',
+          padding: '24px 28px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 14,
+        }}
+      >
+        <span
+          style={{
+            width: 20,
+            height: 20,
+            flex: '0 0 20px',
+            borderRadius: '50%',
+            border: `2px solid ${COLORS.accentSoft}`,
+            borderTopColor: COLORS.accent,
+            animation: 'route-spin .9s linear infinite',
+          }}
+        />
+        <span style={{ fontSize: 16, color: COLORS.ink }}>
+          Агент изучает варианты на выбранную дату
+        </span>
+      </div>
+    );
+  }
 
   const found = steps.filter((step) => step.result && !step.empty).length;
 
