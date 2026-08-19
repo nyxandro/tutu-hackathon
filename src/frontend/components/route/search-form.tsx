@@ -73,11 +73,12 @@ export function SearchForm({
           `linear-gradient(180deg, rgba(21,12,86,.82) 0%, rgba(21,12,86,.90) 100%), url('/bg.jpg')`,
         backgroundSize: 'cover',
         backgroundPosition: 'center 35%',
-        padding: compact ? '18px 24px 24px' : '64px 24px 76px',
-        // До первого поиска экран отдан обложке целиком: она объясняет, куда
-        // человек попал. С началом поиска высота схлопывается — место нужно
-        // результатам, поэтому min-height анимируется вместе с padding.
-        minHeight: compact ? '0vh' : '78vh',
+        padding: compact ? '18px 24px 24px' : '44px 24px 52px',
+        // До первого поиска обложка крупная, но не во весь экран: под ней
+        // должна помещаться карточка «что происходит после запроса», иначе
+        // человек её просто не видит. С началом поиска высота схлопывается —
+        // место нужно результатам, поэтому min-height анимируется с padding.
+        minHeight: compact ? '0vh' : '58vh',
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'center',
