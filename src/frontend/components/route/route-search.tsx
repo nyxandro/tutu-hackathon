@@ -23,6 +23,7 @@ import { HotelList } from '@/frontend/components/route/hotel-list';
 import { HowItWorks } from '@/frontend/components/route/how-it-works';
 import { isKnownCity } from '@/frontend/components/route/city-input';
 import { SearchForm } from '@/frontend/components/route/search-form';
+import { ScrollTop } from '@/frontend/components/route/scroll-top';
 import { SortSwitch } from '@/frontend/components/route/sort-switch';
 
 type Sort = 'departure' | 'arrival' | 'price';
@@ -396,7 +397,8 @@ export function RouteSearch() {
           </div>
         ) : null}
       </div>
+
+      <ScrollTop />
     </div>
   );
 }
-
