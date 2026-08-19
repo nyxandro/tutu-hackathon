@@ -8,9 +8,8 @@
 
 'use client';
 
-import { useState } from 'react';
 import { ROUTE_EXAMPLES, TRANSPORT_MODES, TRAVEL_CONSTRAINTS } from '@/frontend/config';
-import { COLORS } from '@/frontend/design';
+import { COLORS, TRANSPORT_ICONS } from '@/frontend/design';
 import { CityInput } from '@/frontend/components/route/city-input';
 import { DatePicker } from '@/frontend/components/route/date-picker';
 
@@ -43,7 +42,6 @@ export function SearchForm({
   modes: string[];
   onMode: (key: string) => void;
 }) {
-  const [extrasOpen, setExtrasOpen] = useState(false);
 
   return (
     <div style={{ background: COLORS.headerBg, padding: '22px 24px 30px' }}>
@@ -124,87 +122,75 @@ export function SearchForm({
             </button>
           </form>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <button
-              onClick={() => setExtrasOpen((open) => !open)}
+          {/* Фильтры видны всегда: в срочной ситуации человек не должен искать,
+              где их раскрыть. Транспорт — иконками, чтобы строка не разрасталась. */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 13, color: COLORS.mutedSoft }}>Чем ехать:</span>
+
+            <div style={{ display: 'flex', gap: 6 }}>
+              {TRANSPORT_MODES.map((mode) => {
+                const active = modes.includes(mode.key);
+                return (
+                  <button
+                    key={mode.key}
+                    onClick={() => onMode(mode.key)}
+                    title={mode.label}
+                    aria-label={mode.label}
+                    aria-pressed={active}
+                    style={{
+                      width: 42,
+                      height: 38,
+                      border: 'none',
+                      borderRadius: 10,
+                      background: active ? COLORS.accentSoft : COLORS.headerChip,
+                      color: active ? COLORS.ink : COLORS.chipText,
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontFamily: "'Material Symbols Rounded'",
+                      fontSize: 21,
+                      lineHeight: 1,
+                    }}
+                  >
+                    {TRANSPORT_ICONS[mode.key] ?? 'help'}
+                  </button>
+                );
+              })}
+            </div>
+
+            <span
               style={{
-                alignSelf: 'flex-start',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 8,
-                height: 34,
-                padding: '0 14px',
-                border: 'none',
-                borderRadius: 8,
-                background: COLORS.headerChip,
-                color: COLORS.chipText,
-                fontFamily: 'inherit',
-                fontSize: 14,
-                cursor: 'pointer',
+                width: 1,
+                height: 24,
+                background: 'rgba(255,255,255,.14)',
+                margin: '0 2px',
               }}
-            >
-              Особые условия
-            </button>
+            />
 
-            {extrasOpen ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: 13, color: COLORS.mutedSoft }}>Чем ехать:</span>
-                  {TRANSPORT_MODES.map((mode) => {
-                    const active = modes.includes(mode.key);
-                    return (
-                      <button
-                        key={mode.key}
-                        onClick={() => onMode(mode.key)}
-                        style={{
-                          height: 34,
-                          padding: '0 14px',
-                          border: 'none',
-                          borderRadius: 999,
-                          background: active ? COLORS.accentSoft : COLORS.headerChip,
-                          color: active ? COLORS.ink : COLORS.chipText,
-                          fontFamily: 'inherit',
-                          fontSize: 14,
-                          cursor: 'pointer',
-                        }}
-                      >
-                        {mode.label}
-                      </button>
-                    );
-                  })}
-                  {modes.length > 0 ? (
-                    <span style={{ fontSize: 12, color: COLORS.mutedSoft }}>
-                      выбрано — ищем только этим
-                    </span>
-                  ) : null}
-                </div>
-
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                {TRAVEL_CONSTRAINTS.map((item) => {
-                  const active = Boolean(constraints[item.key]);
-                  return (
-                    <button
-                      key={item.key}
-                      onClick={() => onConstraint(item.key)}
-                      style={{
-                        height: 38,
-                        padding: '0 16px',
-                        border: 'none',
-                        borderRadius: 999,
-                        background: active ? COLORS.accentSoft : COLORS.headerChip,
-                        color: active ? COLORS.ink : COLORS.chipText,
-                        fontFamily: 'inherit',
-                        fontSize: 14,
-                        cursor: 'pointer',
-                      }}
-                    >
-                      {item.label}
-                    </button>
-                  );
-                })}
-              </div>
-              </div>
-            ) : null}
+            {TRAVEL_CONSTRAINTS.map((item) => {
+              const active = Boolean(constraints[item.key]);
+              return (
+                <button
+                  key={item.key}
+                  onClick={() => onConstraint(item.key)}
+                  aria-pressed={active}
+                  style={{
+                    height: 38,
+                    padding: '0 16px',
+                    border: 'none',
+                    borderRadius: 999,
+                    background: active ? COLORS.accentSoft : COLORS.headerChip,
+                    color: active ? COLORS.ink : COLORS.chipText,
+                    fontFamily: 'inherit',
+                    fontSize: 14,
+                    cursor: 'pointer',
+                  }}
+                >
+                  {item.label}
+                </button>
+              );
+            })}
           </div>
 
           {showExamples ? (
