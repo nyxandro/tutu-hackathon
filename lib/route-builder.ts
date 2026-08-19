@@ -13,8 +13,8 @@
  */
 
 import {
-  LEAD_TIME_DEFAULT_MIN,
-  LEAD_TIME_MIN,
+  LAYOVER_DEFAULT_MIN,
+  LAYOVER_MIN,
   MAX_HUBS_PER_SEARCH,
   RESCUE_HOTELS_LIMIT,
   ROUTE_CHAINS_LIMIT,
@@ -91,8 +91,9 @@ function extractOffers(payload: TutuToolPayload): TransportOffer[] {
   return [];
 }
 
-function leadTimeFor(transport: string | undefined): number {
-  return LEAD_TIME_MIN[transport ?? ''] ?? LEAD_TIME_DEFAULT_MIN;
+/** Сколько минимально нужно на пересадку с одного вида транспорта на другой. */
+function layoverFor(from: string | undefined, to: string | undefined): number {
+  return LAYOVER_MIN[from ?? '']?.[to ?? ''] ?? LAYOVER_DEFAULT_MIN;
 }
 
 function toLeg(offer: TransportOffer, fallbackFrom: string, fallbackTo: string): RouteLeg | null {
@@ -152,7 +153,7 @@ function pairLegs(
   for (const a of first) {
     for (const b of second) {
       const layoverMin = minutesBetween(a.arrivalAt, b.departureAt);
-      const required = leadTimeFor(b.transport);
+      const required = layoverFor(a.transport, b.transport);
 
       if (layoverMin < required) continue;
 
