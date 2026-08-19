@@ -77,7 +77,11 @@ export function describeResult(
 
     case 'suggest_hubs': {
       const hubs = Array.isArray(output.hubs) ? output.hubs : [];
-      if (hubs.length === 0) return { text: 'подходящих городов не нашлось', empty: true };
+      // Пустой справочник — не тупик: агент подберёт города сам, и следующим
+      // шагом это видно. Прежний текст «городов не нашлось» пугал зря.
+      if (hubs.length === 0) {
+        return { text: 'в справочнике нет — подберу города сам', empty: false };
+      }
       return { text: `проверю: ${hubs.join(', ')}`, empty: false };
     }
 

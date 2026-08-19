@@ -89,9 +89,20 @@ export const NEIGHBOUR_HUBS: Record<string, string[]> = {
   'тверская область': ['Великий Новгород'],
 };
 
-/** Строка региона у Туту бывает составной: «городской округ Тобольск, Тюменская область». */
-function normalizeRegion(region: string): string {
-  return region.toLowerCase().split(',').map((part) => part.trim()).at(-1) ?? '';
+/**
+ * Регион у Туту приходит составным, и порядок частей непредсказуем:
+ * «городской округ Тобольск, Тюменская область», но «Орловская область,
+ * городской округ Ливны». Поэтому ищем совпадение по любой части, а не по
+ * последней — иначе справочник молчит там, где ответ в нём есть.
+ */
+function regionKeys(region: string): string[] {
+  const parts = region
+    .toLowerCase()
+    .split(',')
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  return [...parts, region.toLowerCase().trim()];
 }
 
 /**
@@ -101,9 +112,15 @@ function normalizeRegion(region: string): string {
 export function resolveHub(region: string | undefined, exclude: string[] = []): string[] {
   if (!region) return [];
 
-  const key = normalizeRegion(region);
-  const hubs = [REGION_HUBS[key], ...(NEIGHBOUR_HUBS[key] ?? [])].filter(Boolean) as string[];
   const skip = exclude.map((city) => city.toLowerCase());
+  const found: string[] = [];
 
-  return hubs.filter((city) => !skip.includes(city.toLowerCase()));
+  for (const key of regionKeys(region)) {
+    const center = REGION_HUBS[key];
+    if (center) found.push(center);
+    found.push(...(NEIGHBOUR_HUBS[key] ?? []));
+  }
+
+  // Дубликаты возможны: одна строка региона может совпасть по нескольким частям.
+  return [...new Set(found)].filter((city) => !skip.includes(city.toLowerCase()));
 }
