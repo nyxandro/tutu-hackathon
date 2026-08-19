@@ -9,7 +9,13 @@
  */
 
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
-import { createUIMessageStreamResponse, isStepCount, streamText, toUIMessageStream } from 'ai';
+import {
+  createUIMessageStream,
+  createUIMessageStreamResponse,
+  isStepCount,
+  streamText,
+  toUIMessageStream,
+} from 'ai';
 import { AGENT_MAX_STEPS, AGENT_MODEL, AGENT_TIMEOUT_MS } from '@/modules/agent/config';
 import { buildAgentPrompt } from '@/modules/agent/prompt';
 import { createSession } from '@/modules/agent/session';
@@ -60,32 +66,68 @@ export async function POST(req: Request) {
   const tools = createAgentTools(session, collected);
   const openrouter = createOpenRouter({ apiKey });
 
-  const result = streamText({
-    model: openrouter(AGENT_MODEL),
-    system: buildAgentPrompt(),
-    prompt:
-      `Найди, как добраться: ${origin.trim()} → ${destination.trim()}, дата ${date.trim()}.` +
-      (modes?.length
-        ? ` Человек готов ехать только этим транспортом: ${modes.join(', ')}. Поиск уже сужен, отдельно фильтровать не нужно.`
-        : ''),
-    tools,
-    stopWhen: isStepCount(AGENT_MAX_STEPS),
-    // Жёсткий потолок времени: без него цикл висит до maxDuration роута,
-    // а на демо это выглядит как зависание.
-    abortSignal: AbortSignal.timeout(AGENT_TIMEOUT_MS),
-    onError: ({ error }) => {
-      console.error('[agent] сбой цикла', error);
-    },
-  });
+  const searchPrompt =
+    `Найди, как добраться: ${origin.trim()} → ${destination.trim()}, дата ${date.trim()}.` +
+    (modes?.length
+      ? ` Человек готов ехать только этим транспортом: ${modes.join(', ')}. Поиск уже сужен, отдельно фильтровать не нужно.`
+      : '');
 
   return createUIMessageStreamResponse({
-    stream: toUIMessageStream({
-      stream: result.stream,
-      tools,
-      // Собранные маршруты уходят в интерфейс отдельным событием в конце:
-      // так карточки рисуются из данных Туту, а не из пересказа модели.
+    stream: createUIMessageStream({
+      execute: async ({ writer }) => {
+        const search = streamText({
+          model: openrouter(AGENT_MODEL),
+          system: buildAgentPrompt(),
+          prompt: searchPrompt,
+          tools,
+          stopWhen: isStepCount(AGENT_MAX_STEPS),
+          abortSignal: AbortSignal.timeout(AGENT_TIMEOUT_MS),
+          onError: ({ error }) => {
+            console.error('[agent] сбой поиска маршрутов', error);
+          },
+        });
+
+        writer.merge(toUIMessageStream({ stream: search.stream, tools }));
+        await search.text;
+
+        // Агент занят билетами и про ночлег регулярно забывает, хотя это
+        // написано в промпте. Проверяем сами и, если поездка уехала на другой
+        // день, просим его отдельным заходом подобрать гостиницы — человек
+        // видит это как продолжение работы, а не как отдельный запрос.
+        const dates = [...new Set(collected.map((chain) => chain.departureAt.slice(0, 10)))];
+        const movedToAnotherDay = collected.length > 0 && !dates.includes(date.trim());
+
+        if (!movedToAnotherDay || session.hotels) return;
+
+        const checkOut = dates.sort()[0];
+        const stay = streamText({
+          model: openrouter(AGENT_MODEL),
+          system: buildAgentPrompt(),
+          prompt:
+            `Уехать ${date.trim()} не получилось, ближайший маршрут — на ${checkOut}. ` +
+            `Человеку нужно переночевать в городе ${origin.trim()}. ` +
+            `Вызови search_hotels с city="${origin.trim()}", check_in="${date.trim()}", ` +
+            `check_out="${checkOut}" и коротко скажи, что нашлось. Больше ничего не ищи.`,
+          tools,
+          stopWhen: isStepCount(3),
+          abortSignal: AbortSignal.timeout(AGENT_TIMEOUT_MS),
+          onError: ({ error }) => {
+            console.error('[agent] сбой подбора гостиниц', error);
+          },
+        });
+
+        writer.merge(toUIMessageStream({ stream: stay.stream, tools }));
+        await stay.text;
+      },
+      onError: (error) => {
+        console.error('[agent] сбой потока', error);
+        return 'Не удалось выполнить поиск.';
+      },
       onEnd: () => {
-        console.log(`[agent] шагов поиска: ${session.searchCount}, маршрутов: ${collected.length}`);
+        console.log(
+          `[agent] шагов поиска: ${session.searchCount}, маршрутов: ${collected.length}` +
+            `, гостиниц: ${session.hotels?.list.length ?? 0}`,
+        );
       },
     }),
   });
