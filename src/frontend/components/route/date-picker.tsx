@@ -34,6 +34,8 @@ function toIso(date: Date): string {
 function humanDate(iso: string): string {
   const date = new Date(`${iso}T00:00:00`);
   if (Number.isNaN(date.getTime())) return iso;
+  // Сегодняшний день называем словом: так понятнее, что поиск идёт «прямо сейчас».
+  if (iso === toIso(new Date())) return 'Сегодня';
   return `${date.getDate()} ${MONTHS_GENITIVE[date.getMonth()]} ${date.getFullYear()}`;
 }
 

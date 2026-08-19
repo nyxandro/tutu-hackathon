@@ -43,9 +43,14 @@ function humanDay(iso: string): string {
 export function RouteSearch() {
   const [from, setFrom] = useState('Москва');
   const [to, setTo] = useState('');
-  const [date, setDate] = useState(() =>
-    new Date(Date.now() + MS_IN_DAY).toISOString().slice(0, 10),
-  );
+  // По умолчанию — сегодня: сценарий продукта в том, что уехать надо сейчас.
+  // Дату собираем по местному календарю, а не через toISOString: UTC-сдвиг
+  // вечером даёт завтрашний день.
+  const [date, setDate] = useState(() => {
+    const now = new Date();
+    const pad = (value: number) => String(value).padStart(2, '0');
+    return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+  });
   // По умолчанию — раньше уехать: человеку, который не может выбраться, важнее
   // всего не ждать, а не выиграть час в дороге.
   const [sort, setSort] = useState<Sort>('departure');
