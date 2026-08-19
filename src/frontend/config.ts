@@ -28,6 +28,15 @@ export const TRAVEL_CONSTRAINTS = [
   { key: 'noTight', label: 'Без тесных пересадок' },
 ];
 
+// Виды транспорта уходят в MCP параметром `modes`: поиск сужается на стороне
+// Туту, а не после. Пустой выбор означает «любой транспорт».
+export const TRANSPORT_MODES = [
+  { key: 'avia', label: 'Самолёт' },
+  { key: 'railway', label: 'Поезд' },
+  { key: 'bus', label: 'Автобус' },
+  { key: 'etrain', label: 'Электричка' },
+];
+
 // Что считается ночью: выезд или прибытие в этом промежутке.
 export const NIGHT_FROM_HOUR = 23;
 export const NIGHT_TO_HOUR = 6;

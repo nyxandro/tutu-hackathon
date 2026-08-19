@@ -57,6 +57,8 @@ export type HotelOffer = {
   fullAddress?: string;
   phones?: string[];
   checkInTime?: string;
+  /** Отель принимает с животными — по фильтру `pet_friendly` самого Туту. */
+  petFriendly?: boolean;
 };
 
 /** Возвращает список офферов независимо от домена — им пользуются и выжимка, и UI. */

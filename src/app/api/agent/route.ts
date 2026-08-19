@@ -22,6 +22,8 @@ type AgentRequest = {
   origin?: string;
   destination?: string;
   date?: string;
+  /** Виды транспорта: пусто или отсутствует — искать любым. */
+  modes?: string[];
 };
 
 export async function POST(req: Request) {
@@ -39,7 +41,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const { origin, destination, date }: AgentRequest = await req.json();
+  const { origin, destination, date, modes }: AgentRequest = await req.json();
 
   if (!origin?.trim() || !destination?.trim() || !date?.trim()) {
     return Response.json(
@@ -51,7 +53,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const session = createSession(destination.trim(), AGENT_TIMEOUT_MS);
+  const session = createSession(destination.trim(), AGENT_TIMEOUT_MS, modes ?? []);
   // Сюда инструменты складывают готовые маршруты: их рисует интерфейс,
   // модель их не пересказывает и потому не может исказить.
   const collected: RouteChain[] = [];
@@ -61,7 +63,11 @@ export async function POST(req: Request) {
   const result = streamText({
     model: openrouter(AGENT_MODEL),
     system: buildAgentPrompt(),
-    prompt: `Найди, как добраться: ${origin.trim()} → ${destination.trim()}, дата ${date.trim()}.`,
+    prompt:
+      `Найди, как добраться: ${origin.trim()} → ${destination.trim()}, дата ${date.trim()}.` +
+      (modes?.length
+        ? ` Человек готов ехать только этим транспортом: ${modes.join(', ')}. Поиск уже сужен, отдельно фильтровать не нужно.`
+        : ''),
     tools,
     stopWhen: isStepCount(AGENT_MAX_STEPS),
     // Жёсткий потолок времени: без него цикл висит до maxDuration роута,

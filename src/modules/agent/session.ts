@@ -35,6 +35,8 @@ export type AgentSession = {
   deadline: number;
   /** Конечный город поиска: по нему отличаем плечо «узел → цель». */
   target: string;
+  /** Виды транспорта, которыми человек готов ехать. Пусто — любые. */
+  modes: string[];
   /** Гостиницы запасного плана, если поездку пришлось перенести. */
   hotels?: { city: string; checkIn: string; checkOut: string; list: HotelOffer[] };
   next: () => string;
@@ -42,7 +44,7 @@ export type AgentSession = {
   describe: () => string;
 };
 
-export function createSession(target: string, deadlineMs: number): AgentSession {
+export function createSession(target: string, deadlineMs: number, modes: string[] = []): AgentSession {
   let counter = 0;
   const session: AgentSession = {
     legs: new Map(),
@@ -51,6 +53,7 @@ export function createSession(target: string, deadlineMs: number): AgentSession 
     solved: 0,
     deadline: Date.now() + deadlineMs,
     target,
+    modes,
     next: () => `leg${++counter}`,
     describe: () => {
       const hubs = [...session.triedHubs.entries()]

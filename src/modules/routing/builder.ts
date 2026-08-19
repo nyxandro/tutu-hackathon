@@ -192,12 +192,20 @@ export function dedupe(chains: RouteChain[]): RouteChain[] {
  * одного плеча не должна ронять весь экран — вместо этого маршрут через этот
  * узел просто не построится, а причина попадёт в заметки.
  */
-export async function searchLeg(origin: string, destination: string, date: string) {
+export async function searchLeg(
+  origin: string,
+  destination: string,
+  date: string,
+  modes?: string[],
+) {
   try {
     const payload = await callTutu('search_multitransport', {
       origin,
       destination,
       departure_date: date,
+      // Пустой список означает «любой транспорт»: параметр не передаём вовсе,
+      // иначе Туту вернёт пусто.
+      ...(modes && modes.length > 0 ? { modes } : {}),
       view: 'compact',
     });
 

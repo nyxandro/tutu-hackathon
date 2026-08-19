@@ -49,12 +49,14 @@ export function RouteSearch() {
   // всего не ждать, а не выиграть час в дороге.
   const [sort, setSort] = useState<Sort>('departure');
   const [constraints, setConstraints] = useState<Record<string, boolean>>({});
+  // Пустой список — искать любым транспортом; параметр тогда вовсе не уходит.
+  const [modes, setModes] = useState<string[]>([]);
 
   const { steps, chains, stay, summary, status, search } = useAgentSearch();
 
-  function run(query: SearchQuery) {
+  function run(query: Omit<SearchQuery, 'modes'>) {
     if (!query.origin.trim() || !query.destination.trim()) return;
-    void search(query);
+    void search({ ...query, modes });
   }
 
   // Условия применяются к готовым маршрутам: данные о времени и стыковках
@@ -105,6 +107,10 @@ export function RouteSearch() {
         onDate={setDate}
         constraints={constraints}
         onConstraint={(key) => setConstraints((prev) => ({ ...prev, [key]: !prev[key] }))}
+        modes={modes}
+        onMode={(key) =>
+          setModes((prev) => (prev.includes(key) ? prev.filter((m) => m !== key) : [...prev, key]))
+        }
         onSearch={() => run({ origin: from, destination: to, date })}
         onExample={(example) => {
           setFrom(example.origin);

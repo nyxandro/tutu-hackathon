@@ -8,6 +8,7 @@
 
 'use client';
 
+import { useState } from 'react';
 import Image from 'next/image';
 import type { HotelOffer } from '@/modules/tutu/types';
 import type { StayOffer } from '@/frontend/hooks/use-agent-search';
@@ -57,6 +58,60 @@ export function HotelList({ stay, anchorId }: { stay: StayOffer; anchorId: strin
   );
 }
 
+/** Значок «можно с животными»: по клику всплывает пояснение. */
+function PetBadge() {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div style={{ position: 'absolute', top: 10, right: 10, zIndex: 2 }}>
+      <button
+        type="button"
+        onClick={() => setOpen((prev) => !prev)}
+        onBlur={() => setOpen(false)}
+        aria-label="Можно с животными"
+        style={{
+          width: 34,
+          height: 34,
+          borderRadius: 999,
+          border: 'none',
+          background: 'rgba(255,255,255,.92)',
+          cursor: 'pointer',
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontFamily: "'Material Symbols Rounded'",
+          fontSize: 20,
+          lineHeight: 1,
+          color: COLORS.accent,
+          boxShadow: '0 2px 8px rgba(21,12,86,.18)',
+        }}
+      >
+        pets
+      </button>
+
+      {open ? (
+        <div
+          style={{
+            position: 'absolute',
+            top: 40,
+            right: 0,
+            width: 190,
+            padding: '10px 12px',
+            borderRadius: 12,
+            background: COLORS.ink,
+            color: '#FFFFFF',
+            fontSize: 13,
+            lineHeight: 1.4,
+            boxShadow: '0 10px 28px rgba(21,12,86,.32)',
+          }}
+        >
+          Сюда можно заселиться с животным
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function HotelCard({ hotel, nightsLabel }: { hotel: HotelOffer; nightsLabel: string }) {
   const price = priceOf(hotel);
   const photo = hotel.photos?.[0];
@@ -86,6 +141,8 @@ function HotelCard({ hotel, nightsLabel }: { hotel: HotelOffer; nightsLabel: str
             style={{ objectFit: 'cover' }}
           />
         ) : null}
+
+        {hotel.petFriendly ? <PetBadge /> : null}
 
         {typeof hotel.rating === 'number' ? (
           <span

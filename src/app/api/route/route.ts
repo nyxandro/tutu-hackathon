@@ -14,6 +14,7 @@ type RouteRequest = {
   origin?: string;
   destination?: string;
   date?: string;
+  modes?: string[];
 };
 
 export async function POST(req: Request) {

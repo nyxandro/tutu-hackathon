@@ -142,7 +142,7 @@ export function createAgentTools(session: AgentSession, collected: RouteChain[])
         session.searchCount += 1;
 
         const attempt = await withRetry(`${origin} → ${destination}`, () =>
-          searchLeg(origin, destination, date),
+          searchLeg(origin, destination, date, session.modes),
         );
 
         if (!attempt.ok) {
@@ -340,6 +340,27 @@ export function createAgentTools(session: AgentSession, collected: RouteChain[])
           ? (attempt.value.hotels as HotelOffer[])
           : [];
 
+        // Удобств в результатах поиска нет, но есть фильтр по ним. Поэтому
+        // спрашиваем отдельно, какие отели города принимают с животными, —
+        // один запрос на весь список, а не на каждый отель.
+        const petFriendly = await withRetry(`гостиницы с животными в ${city}`, () =>
+          callTutu('search_hotels', {
+            city_name: city,
+            check_in,
+            check_out,
+            adults: 1,
+            hotel_amenities: ['pet_friendly'],
+            view: 'compact',
+          }),
+        );
+        const petIds = new Set(
+          petFriendly.ok && Array.isArray(petFriendly.value.hotels)
+            ? (petFriendly.value.hotels as HotelOffer[])
+                .map((hotel) => hotel.hotel_id)
+                .filter((id): id is string => typeof id === 'string')
+            : [],
+        );
+
         // Дешёвые вперёд: человек не планировал ночевать и не выбирал отель заранее.
         const cheapest = [...all]
           .filter((hotel) => priceOf(hotel) !== undefined)
@@ -350,9 +371,11 @@ export function createAgentTools(session: AgentSession, collected: RouteChain[])
         // для нескольких первых: человеку, который едет ночевать, нужен адрес,
         // а не «684 м от центра».
         const withDetails = await Promise.all(
-          cheapest.map(async (hotel, index) =>
-            index < HOTEL_DETAILS_LIMIT ? await enrich(hotel, check_in, check_out) : hotel,
-          ),
+          cheapest.map(async (hotel, index) => {
+            const base =
+              index < HOTEL_DETAILS_LIMIT ? await enrich(hotel, check_in, check_out) : hotel;
+            return { ...base, petFriendly: petIds.has(base.hotel_id ?? '') };
+          }),
         );
 
         session.hotels = { city, checkIn: check_in, checkOut: check_out, list: withDetails };

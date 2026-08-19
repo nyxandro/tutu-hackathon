@@ -9,7 +9,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ROUTE_EXAMPLES, TRAVEL_CONSTRAINTS } from '@/frontend/config';
+import { ROUTE_EXAMPLES, TRANSPORT_MODES, TRAVEL_CONSTRAINTS } from '@/frontend/config';
 import { COLORS } from '@/frontend/design';
 import { CityInput } from '@/frontend/components/route/city-input';
 import { DatePicker } from '@/frontend/components/route/date-picker';
@@ -20,12 +20,14 @@ export function SearchForm({
   date,
   showExamples,
   constraints,
+  modes,
   onFrom,
   onTo,
   onDate,
   onSearch,
   onExample,
   onConstraint,
+  onMode,
 }: {
   from: string;
   to: string;
@@ -38,6 +40,8 @@ export function SearchForm({
   onExample: (example: { origin: string; destination: string }) => void;
   constraints: Record<string, boolean>;
   onConstraint: (key: string) => void;
+  modes: string[];
+  onMode: (key: string) => void;
 }) {
   const [extrasOpen, setExtrasOpen] = useState(false);
 
@@ -143,6 +147,38 @@ export function SearchForm({
             </button>
 
             {extrasOpen ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 13, color: COLORS.mutedSoft }}>Чем ехать:</span>
+                  {TRANSPORT_MODES.map((mode) => {
+                    const active = modes.includes(mode.key);
+                    return (
+                      <button
+                        key={mode.key}
+                        onClick={() => onMode(mode.key)}
+                        style={{
+                          height: 34,
+                          padding: '0 14px',
+                          border: 'none',
+                          borderRadius: 999,
+                          background: active ? COLORS.accentSoft : COLORS.headerChip,
+                          color: active ? COLORS.ink : COLORS.chipText,
+                          fontFamily: 'inherit',
+                          fontSize: 14,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {mode.label}
+                      </button>
+                    );
+                  })}
+                  {modes.length > 0 ? (
+                    <span style={{ fontSize: 12, color: COLORS.mutedSoft }}>
+                      выбрано — ищем только этим
+                    </span>
+                  ) : null}
+                </div>
+
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                 {TRAVEL_CONSTRAINTS.map((item) => {
                   const active = Boolean(constraints[item.key]);
@@ -166,6 +202,7 @@ export function SearchForm({
                     </button>
                   );
                 })}
+              </div>
               </div>
             ) : null}
           </div>

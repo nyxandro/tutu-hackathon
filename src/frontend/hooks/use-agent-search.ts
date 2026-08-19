@@ -18,7 +18,7 @@ import type { HotelOffer } from '@/modules/tutu/types';
 import type { TraceStep } from '@/frontend/components/route/agent-trace';
 import { describeCall, describeResult } from '@/frontend/components/route/agent-trace-labels';
 
-export type SearchQuery = { origin: string; destination: string; date: string };
+export type SearchQuery = { origin: string; destination: string; date: string; modes?: string[] };
 export type StayOffer = {
   city: string;
   checkIn: string;
