@@ -133,25 +133,30 @@ export function SearchForm({
               marginTop: 6,
             }}
           >
-            <span style={{ fontSize: 13, color: COLORS.mutedSoft }}>Чем ехать:</span>
+            <span style={{ fontSize: 13, color: COLORS.mutedSoft }}>Выбранный транспорт</span>
 
             <div style={{ display: 'flex', gap: 6 }}>
               {TRANSPORT_MODES.map((mode) => {
-                const active = modes.includes(mode.key);
+                const picked = modes.includes(mode.key);
+                // Пока не выбрано ничего, ищем любым транспортом — значит
+                // исключённых нет и крестики рисовать не за что.
+                const excluded = modes.length > 0 && !picked;
+
                 return (
                   <button
                     key={mode.key}
                     onClick={() => onMode(mode.key)}
-                    title={mode.label}
+                    title={excluded ? `${mode.label} — исключён` : mode.label}
                     aria-label={mode.label}
-                    aria-pressed={active}
+                    aria-pressed={picked}
                     style={{
+                      position: 'relative',
                       width: 36,
                       height: 32,
                       border: 'none',
                       borderRadius: 9,
-                      background: active ? COLORS.accentSoft : COLORS.headerChip,
-                      color: active ? COLORS.ink : COLORS.chipText,
+                      background: excluded ? COLORS.surface : picked ? COLORS.accentSoft : COLORS.headerChip,
+                      color: excluded ? COLORS.faint : picked ? COLORS.ink : COLORS.chipText,
                       cursor: 'pointer',
                       display: 'inline-flex',
                       alignItems: 'center',
@@ -162,6 +167,31 @@ export function SearchForm({
                     }}
                   >
                     {TRANSPORT_ICONS[mode.key] ?? 'help'}
+
+                    {excluded ? (
+                      <span
+                        aria-hidden
+                        style={{
+                          position: 'absolute',
+                          top: -5,
+                          right: -5,
+                          width: 16,
+                          height: 16,
+                          borderRadius: 999,
+                          background: COLORS.surface,
+                          color: COLORS.accent,
+                          fontFamily: "'Material Symbols Rounded'",
+                          fontSize: 13,
+                          lineHeight: 1,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          boxShadow: '0 1px 4px rgba(21,12,86,.3)',
+                        }}
+                      >
+                        close
+                      </span>
+                    ) : null}
                   </button>
                 );
               })}
