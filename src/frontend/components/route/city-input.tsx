@@ -23,13 +23,21 @@ function normalize(value: string): string {
 }
 
 /**
+ * Каноническое написание города из справочника или null, если такого нет.
+ * Сравнение нестрогое по регистру и ё/е, поэтому «плес» находит «Плёс».
+ */
+export function canonicalCity(value: string): string | null {
+  const needle = normalize(value);
+  if (!needle) return null;
+  return ALL_CITIES.find((city) => normalize(city.n) === needle)?.n ?? null;
+}
+
+/**
  * Город принимается, только если он есть в справочнике: MCP Туту ищет по
  * названию, и на выдуманном городе поиск молча вернёт пустоту вместо ошибки.
  */
 export function isKnownCity(value: string): boolean {
-  const needle = normalize(value);
-  if (!needle) return false;
-  return ALL_CITIES.some((city) => normalize(city.n) === needle);
+  return canonicalCity(value) !== null;
 }
 
 /**
@@ -197,7 +205,15 @@ export function CityInput({
           onBlur={() => {
             blurTimer.current = setTimeout(() => {
               setOpen(false);
-              if (!value.trim() || isKnownCity(value)) {
+              if (!value.trim()) {
+                setDirty(false);
+                return;
+              }
+              // Город набран верно, но как придётся: приводим к написанию из
+              // справочника, чтобы «ливны» на экране стали «Ливны».
+              const canonical = canonicalCity(value);
+              if (canonical) {
+                if (canonical !== value) onChange(canonical);
                 setDirty(false);
                 return;
               }
