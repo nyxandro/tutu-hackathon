@@ -81,7 +81,7 @@ export function RouteSearch() {
       >
         {idle ? <HowItWorks /> : null}
 
-        <AgentTrace steps={steps} done={!running} />
+        <AgentTrace key={steps[0]?.id ?? 'idle'} steps={steps} done={!running} />
 
         {chains.length > 0 ? (
           <>

@@ -35,6 +35,10 @@ export function describeResult(
     return { text: output.error, empty: true };
   }
 
+  if (output.repeated === true) {
+    return { text: 'уже проверяли этот маршрут', empty: true };
+  }
+
   const count = typeof output.count === 'number' ? output.count : undefined;
 
   switch (toolName) {

@@ -33,3 +33,6 @@ export const SEARCH_STAGE_MS = [1200, 2300, 3400];
 
 // Сколько городов показываем в подсказках при вводе.
 export const CITY_SUGGESTIONS_LIMIT = 7;
+
+// Через сколько после окончания поиска лента шагов сворачивается сама.
+export const TRACE_COLLAPSE_DELAY_MS = 1000;

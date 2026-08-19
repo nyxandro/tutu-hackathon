@@ -64,6 +64,22 @@ export function createAgentTools(session: AgentSession, collected: RouteChain[])
         date: z.string().describe('Дата в формате ГГГГ-ММ-ДД'),
       }),
       execute: async ({ origin, destination, date }) => {
+        // Модель иногда повторяет один и тот же запрос. Отдаём прежний результат,
+        // не тратя обращение к Туту, и прямо говорим ей, что это повтор.
+        const repeated = [...session.legs.values()].find(
+          (stored) =>
+            stored.origin === origin && stored.destination === destination && stored.date === date,
+        );
+        if (repeated) {
+          return {
+            leg_id: repeated.id,
+            route: `${origin} → ${destination}`,
+            repeated: true,
+            note: 'Этот маршрут уже проверен, повторять его не нужно.',
+            ...summarizeLegs(repeated.legs),
+          };
+        }
+
         if (session.searchCount >= MAX_SEARCHES) {
           return { error: 'Лимит запросов к Туту исчерпан. Работай с тем, что уже найдено.' };
         }
