@@ -14,7 +14,7 @@ import { tool } from 'ai';
 import { z } from 'zod';
 import { callTutu } from '@/modules/tutu/client';
 import { dedupe, pairLegs, searchLeg, toLeg, type RouteChain, type RouteLeg } from '@/modules/routing/builder';
-import { resolveHub } from '@/modules/routing/hubs';
+import { cityPopulation, resolveHub } from '@/modules/routing/hubs';
 import { HOTEL_DETAILS_LIMIT, RESCUE_HOTELS_LIMIT, ROUTE_CHAINS_LIMIT } from '@/modules/routing/config';
 import type { AgentSession } from '@/modules/agent/session';
 import { toolError } from '@/modules/agent/errors';
@@ -35,6 +35,10 @@ import type { HotelOffer } from '@/modules/tutu/types';
  * а повторы отсекаются до обращения к сети.
  */
 const MAX_SEARCHES = 20;
+
+// Сколько пустых направлений из одного города за одну дату считаем приговором
+// этой дате. Три — это уже не совпадение, а расписание.
+const DEAD_ORIGIN_THRESHOLD = 3;
 
 /** Цена за всё проживание: у Туту это best_offer.price с price_basis stay_total. */
 function priceOf(hotel: HotelOffer): number | undefined {
@@ -156,6 +160,18 @@ export function createAgentTools(session: AgentSession, collected: RouteChain[])
           );
         }
 
+        // Из города в этот день уехать не выходит вообще: несколько пустых
+        // ответов подряд по разным направлениям — достаточное доказательство,
+        // а перебор оставшихся городов только жжёт лимит запросов.
+        const deadKey = `${origin}|${date}`;
+        if ((session.emptyByOriginDate.get(deadKey) ?? 0) >= DEAD_ORIGIN_THRESHOLD) {
+          return toolError(
+            'ORIGIN_DEAD_FOR_DATE',
+            `Из города ${origin} на ${date} рейсов нет ни в один из проверенных городов.`,
+            'Перебирать другие города в этот день бессмысленно. Бери следующий день: search_leg с датой +1.',
+          );
+        }
+
         if (session.searchCount >= MAX_SEARCHES) {
           return toolError(
             'SEARCH_BUDGET_SPENT',
@@ -215,6 +231,12 @@ export function createAgentTools(session: AgentSession, collected: RouteChain[])
           session.triedHubs.set(origin, 'no-last-leg');
         }
 
+        // Копим пустые ответы по паре «откуда + дата»: так видно, что город
+        // отправления в этот день закрыт целиком, а не что не повезло с узлом.
+        if (legs.length === 0) {
+          session.emptyByOriginDate.set(deadKey, (session.emptyByOriginDate.get(deadKey) ?? 0) + 1);
+        }
+
         return {
           leg_id: id,
           route: `${origin} → ${destination}`,
@@ -240,14 +262,32 @@ export function createAgentTools(session: AgentSession, collected: RouteChain[])
       execute: async ({ origin, destination, region }) => {
         const hubs = resolveHub(region, [origin, destination]);
 
+        // Узкое место маршрута — маленький город: рейсов у него мало, и город
+        // пересадки отбраковывается по нему одним запросом вместо двух.
+        // Считаем это кодом по справочнику населения, а не оставляем модели.
+        const originSize = cityPopulation(origin) ?? 0;
+        const destinationSize = cityPopulation(destination) ?? 0;
+        const narrow = originSize > 0 && destinationSize > 0 && originSize < destinationSize
+          ? origin
+          : destination;
+        const checkFirst =
+          narrow === origin
+            ? `Сначала проверяй плечо «${origin} → город»: рейсов из ${origin} мало, и неподходящий город отсеется одним запросом.`
+            : `Сначала проверяй плечо «город → ${destination}»: рейсов до ${destination} мало, и неподходящий город отсеется одним запросом.`;
+
         if (hubs.length === 0) {
           return {
             hubs: [],
+            check_first: checkFirst,
             note: 'Справочник не помог. Предложи города сам, исходя из географии, и проверь их.',
           };
         }
 
-        return { hubs, note: 'Проверь эти города через search_leg. Можешь добавить свои.' };
+        return {
+          hubs,
+          check_first: checkFirst,
+          note: 'Проверь эти города через search_leg. Можешь добавить свои.',
+        };
       },
     }),
 

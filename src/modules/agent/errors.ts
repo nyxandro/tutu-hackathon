@@ -20,7 +20,8 @@ export type ToolErrorCode =
   | 'DUPLICATE_REQUEST'
   | 'LEG_NOT_FOUND'
   | 'LEGS_DO_NOT_MEET'
-  | 'DEADLINE_REACHED';
+  | 'DEADLINE_REACHED'
+  | 'ORIGIN_DEAD_FOR_DATE';
 
 export type ToolError = {
   error: true;

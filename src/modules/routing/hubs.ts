@@ -7,7 +7,10 @@
  * - REGION_HUBS — соответствие региона его центру
  * - resolveHub() — нормализует строку региона и возвращает центр
  * - NEIGHBOUR_HUBS — соседние центры для регионов, где одного центра мало
+ * - cityPopulation() — население города для выбора «узкого» плеча маршрута
  */
+
+import cities from '@/modules/routing/cities.json';
 
 /** Ключи в нижнем регистре без слова «область/край/республика» не режем: сравнение идёт по вхождению. */
 export const REGION_HUBS: Record<string, string> = {
@@ -123,4 +126,17 @@ export function resolveHub(region: string | undefined, exclude: string[] = []): 
 
   // Дубликаты возможны: одна строка региона может совпасть по нескольким частям.
   return [...new Set(found)].filter((city) => !skip.includes(city.toLowerCase()));
+}
+
+/**
+ * Население города по справочнику. Нужно, чтобы понять, какое плечо маршрута
+ * проверять первым: рейсов мало именно у маленького города, и отбраковать
+ * неподходящий узел дешевле по нему, а не по миллионнику.
+ */
+export function cityPopulation(name: string): number | null {
+  const needle = name.trim().toLowerCase().replace(/ё/g, 'е');
+  const city = (cities as Array<{ n: string; p: number }>).find(
+    (item) => item.n.toLowerCase().replace(/ё/g, 'е') === needle,
+  );
+  return city?.p ?? null;
 }

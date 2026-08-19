@@ -41,6 +41,12 @@ export type AgentSession = {
   modes: string[];
   /** Сколько взрослых едет: влияет на наличие мест и на цену от Туту. */
   travelers: number;
+  /**
+   * Сколько раз поиск «город → куда угодно» на конкретную дату вернул пусто.
+   * Ключ — «город|дата». По этому счётчику видно, что из города в этот день
+   * уехать нельзя вообще, и перебирать оставшиеся направления бессмысленно.
+   */
+  emptyByOriginDate: Map<string, number>;
   /** Гостиницы запасного плана, если поездку пришлось перенести. */
   hotels?: { city: string; checkIn: string; checkOut: string; list: HotelOffer[] };
   next: () => string;
@@ -64,6 +70,7 @@ export function createSession(
     target,
     modes,
     travelers,
+    emptyByOriginDate: new Map(),
     next: () => `leg${++counter}`,
     describe: () => {
       const hubs = [...session.triedHubs.entries()]
