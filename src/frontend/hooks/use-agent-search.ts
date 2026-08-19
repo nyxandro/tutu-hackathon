@@ -34,6 +34,9 @@ export type StayOffer = {
 };
 export type SearchStatus = 'idle' | 'running' | 'done' | 'error';
 
+/** Идентификатор строки ленты про догрузку гостиниц — он один на поиск. */
+const STAY_STEP_ID = 'stay-lookup';
+
 type ToolEvent = {
   type: string;
   toolCallId?: string;
@@ -88,11 +91,11 @@ export function useAgentSearch() {
    * код, а не промпт.
    */
   const ensureStay = useCallback(
-    async (query: SearchQuery, found: RouteChain[]) => {
-      if (found.length === 0) return;
+    async (query: SearchQuery, found: RouteChain[]): Promise<StayOffer | null> => {
+      if (found.length === 0) return null;
 
       const dates = [...new Set(found.map((chain) => chain.departureAt.slice(0, 10)))];
-      if (dates.includes(query.date)) return;
+      if (dates.includes(query.date)) return null;
 
       try {
         const response = await fetch('/api/stay', {
@@ -106,12 +109,13 @@ export function useAgentSearch() {
             checkOut: dates.sort()[0],
           }),
         });
-        if (!response.ok) return;
+        if (!response.ok) return null;
 
         const data = (await response.json()) as StayOffer;
-        if (data.hotels?.length) setStay(data);
+        return data.hotels?.length ? data : null;
       } catch {
         // Гостиницы — дополнение к маршрутам: без них экран остаётся полезным.
+        return null;
       }
     },
     [],
@@ -152,6 +156,8 @@ export function useAgentSearch() {
       let buffer = '';
       let text = '';
       const collected: RouteChain[] = [];
+      // Гостиницы от агента копим здесь же: на экран всё уходит одним разом.
+      let foundStay: StayOffer | null = null;
 
       try {
         while (true) {
@@ -192,18 +198,17 @@ export function useAgentSearch() {
               // а не из пересказа модели.
               if (toolName === 'build_connections' && Array.isArray(output.chains)) {
                 collected.push(...(output.chains as RouteChain[]));
-                setChains([...collected]);
               }
 
               // Гостиницы приходят полными: с адресом, телефоном и ценой за всё
               // проживание — модель их не пересказывает.
               if (toolName === 'search_hotels' && Array.isArray(output.hotels)) {
-                setStay({
+                foundStay = {
                   city: String(output.city ?? ''),
                   checkIn: String(output.check_in ?? ''),
                   checkOut: String(output.check_out ?? ''),
                   hotels: output.hotels as HotelOffer[],
-                });
+                };
               }
 
               // Повтор — это сбой модели, а не шаг поиска: убираем строку из
@@ -242,8 +247,41 @@ export function useAgentSearch() {
         return;
       }
 
+      // Выдачу показываем целиком и один раз: сначала дожидаемся ночлега,
+      // если уехать в этот день не вышло, и только потом рисуем карточки.
+      // Иначе билеты появляются, а гостиницы доезжают к ним отдельно.
+      let stayOffer = foundStay;
+      if (!stayOffer) {
+        // Догрузка идёт молча несколько секунд, поэтому лента говорит, чем
+        // занят экран, — иначе выглядит как зависший поиск.
+        const dates = [...new Set(collected.map((chain) => chain.departureAt.slice(0, 10)))];
+        const needsStay = !dates.includes(query.date);
+        if (needsStay) {
+          setSteps((prev) => [
+            ...prev,
+            { id: STAY_STEP_ID, action: 'Ищу, где переночевать перед выездом' },
+          ]);
+        }
+        stayOffer = await ensureStay(query, collected);
+        if (needsStay) {
+          setSteps((prev) =>
+            prev.map((step) =>
+              step.id === STAY_STEP_ID
+                ? {
+                    ...step,
+                    result: stayOffer
+                      ? `${stayOffer.hotels.length} вариантов рядом`
+                      : 'свободных вариантов не нашлось',
+                    empty: !stayOffer,
+                  }
+                : step,
+            ),
+          );
+        }
+      }
+      setChains(collected);
+      if (stayOffer) setStay(stayOffer);
       setStatus('done');
-      await ensureStay(query, collected);
     },
     [runPlain, ensureStay],
   );

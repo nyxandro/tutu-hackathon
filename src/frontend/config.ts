@@ -48,7 +48,7 @@ export const SEARCH_STAGE_MS = [1200, 2300, 3400];
 export const CITY_SUGGESTIONS_LIMIT = 7;
 
 // Через сколько после окончания поиска лента шагов сворачивается сама.
-export const TRACE_COLLAPSE_DELAY_MS = 1000;
+export const TRACE_COLLAPSE_DELAY_MS = 500;
 
 // Определение города по геопозиции: сколько ждём ответа браузера и на каком
 // расстоянии город ещё считается «тем самым».
