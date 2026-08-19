@@ -16,6 +16,7 @@ import { tool, type ToolSet } from 'ai';
 import { createHash } from 'node:crypto';
 import { MCP_CACHE_TTL_MS, MCP_CLIENT_NAME, MCP_SERVER_URL, MODEL_OFFERS_LIMIT, MODEL_PAYLOAD_MAX_CHARS } from '@/modules/tutu/config';
 import { prisma } from '@/lib/db';
+import { getTutuFetch } from '@/modules/tutu/proxy';
 import {
   extractList,
   type HotelOffer,
@@ -156,7 +157,12 @@ async function writeCache(key: string, toolName: string, input: unknown, payload
 
 async function connect(): Promise<ToolSet> {
   const client = await createMCPClient({
-    transport: { type: 'http', url: MCP_SERVER_URL },
+    transport: {
+      type: 'http',
+      url: MCP_SERVER_URL,
+      // Прокси подключается только если задан TUTU_PROXY — см. proxy.ts
+      ...(getTutuFetch() ? { fetch: getTutuFetch() } : {}),
+    },
     clientName: MCP_CLIENT_NAME,
   });
 
