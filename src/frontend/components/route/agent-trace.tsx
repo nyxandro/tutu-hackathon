@@ -17,8 +17,6 @@ export type TraceStep = {
   id: string;
   /** Что агент делает: показывается сразу, ещё до результата. */
   action: string;
-  /** Почему он это делает — рассуждение модели перед вызовом инструмента. */
-  reasoning?: string;
   /** Чем закончилось: приходит, когда инструмент ответил. */
   result?: string;
   /** Шаг не дал результата — показываем приглушённо, но не прячем. */
@@ -133,19 +131,6 @@ export function AgentTrace({ steps, done }: { steps: TraceStep[]; done: boolean 
                     >
                       {step.action}
                     </span>
-                    {step.reasoning ? (
-                      <span
-                        style={{
-                          fontSize: 14,
-                          color: COLORS.mutedSoft,
-                          lineHeight: 1.45,
-                          fontStyle: 'italic',
-                          paddingBottom: 2,
-                        }}
-                      >
-                        {step.reasoning}
-                      </span>
-                    ) : null}
                     {step.result ? (
                       <span
                         style={{
