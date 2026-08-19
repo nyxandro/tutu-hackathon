@@ -32,23 +32,87 @@ export function isKnownCity(value: string): boolean {
   return ALL_CITIES.some((city) => normalize(city.n) === needle);
 }
 
+/**
+ * Расстояние Левенштейна с отсечением: как только правок заведомо больше
+ * лимита, считать дальше незачем — на справочнике в тысячу городов это
+ * заметно дешевле полной матрицы.
+ */
+function editDistance(a: string, b: string, limit: number): number {
+  if (Math.abs(a.length - b.length) > limit) return limit + 1;
+
+  let previous = Array.from({ length: b.length + 1 }, (_, index) => index);
+
+  for (let i = 1; i <= a.length; i += 1) {
+    const current = [i];
+    let bestInRow = i;
+
+    for (let j = 1; j <= b.length; j += 1) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      const value = Math.min(previous[j] + 1, current[j - 1] + 1, previous[j - 1] + cost);
+      current.push(value);
+      if (value < bestInRow) bestInRow = value;
+    }
+
+    if (bestInRow > limit) return limit + 1;
+    previous = current;
+  }
+
+  return previous[b.length];
+}
+
+/**
+ * Сколько опечаток прощаем. На коротком запросе допуск выключен: «Тула» и
+ * «Тура» — разные города, и подсказка из двух букв превратилась бы в шум.
+ * С пяти букв допускаем две правки — иначе «Уличь» не приводит к Угличу:
+ * пропущенная буква плюс лишний мягкий знак дают ровно две.
+ */
+function typoBudget(length: number): number {
+  if (length >= 5) return 2;
+  if (length >= 4) return 1;
+  return 0;
+}
+
 function findCities(query: string): City[] {
   const needle = normalize(query);
   if (needle.length < 2) return [];
 
   const starts: City[] = [];
   const contains: City[] = [];
+  const fuzzy: City[] = [];
+  const budget = typoBudget(needle.length);
+  let exactHit = false;
 
   for (const city of ALL_CITIES) {
     const name = normalize(city.n);
-    if (name === needle) continue;
-    if (name.startsWith(needle)) starts.push(city);
-    else if (name.includes(needle)) contains.push(city);
-    if (starts.length >= CITY_SUGGESTIONS_LIMIT) break;
+    if (name === needle) {
+      exactHit = true;
+      continue;
+    }
+
+    if (name.startsWith(needle)) {
+      starts.push(city);
+      if (starts.length >= CITY_SUGGESTIONS_LIMIT) break;
+      continue;
+    }
+
+    if (name.includes(needle)) {
+      contains.push(city);
+      continue;
+    }
+
+    // Опечатка: сравниваем с началом названия, потому что слово человек мог
+    // и не дописать. Запас в budget символов оставлен на пропущенную букву.
+    if (budget > 0 && fuzzy.length < CITY_SUGGESTIONS_LIMIT) {
+      const head = name.slice(0, needle.length + budget);
+      if (editDistance(needle, head, budget) <= budget) fuzzy.push(city);
+    }
   }
 
   // Справочник отсортирован по населению, поэтому крупные города идут первыми.
-  return [...starts, ...contains].slice(0, CITY_SUGGESTIONS_LIMIT);
+  // Порядок групп — от точного совпадения к предположению об опечатке.
+  // Когда город набран верно, догадки не показываем вовсе: иначе на «Казань»
+  // выпадали бы Рязань и Лагань, хотя человек не ошибся.
+  return [...starts, ...contains, ...(exactHit ? [] : fuzzy)].slice(0, CITY_SUGGESTIONS_LIMIT);
 }
 
 export function CityInput({
