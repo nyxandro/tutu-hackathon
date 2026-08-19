@@ -138,10 +138,18 @@ export function RouteSearch() {
               </div>
               <div style={{ fontSize: 16, color: COLORS.inkSoft, lineHeight: 1.45 }}>
                 {[
+                  // Первая фраза зависит от того, что реально нашлось: писать
+                  // «прямых нет», когда все варианты прямые, — прямая ложь.
                   otherDay
                     ? `В ${humanDay(date)} уехать не получается.`
-                    : `Прямых рейсов нет, но добраться можно.`,
-                  `Собрали ${chains.length} ${pluralize(chains.length, 'вариант', 'варианта', 'вариантов')}${hubs.length ? ` через ${hubs.join(' или ')}` : ''}.`,
+                    : transfers.length === 0
+                      ? 'Есть прямые рейсы.'
+                      : transfers.length === chains.length
+                        ? 'Прямых рейсов нет, но добраться можно.'
+                        : 'Прямых рейсов мало, поэтому собрали и варианты с пересадкой.',
+                  transfers.length === chains.length && hubs.length
+                    ? `Собрали ${chains.length} ${pluralize(chains.length, 'вариант', 'варианта', 'вариантов')} через ${hubs.join(' или ')}.`
+                    : `Всего ${chains.length} ${pluralize(chains.length, 'вариант', 'варианта', 'вариантов')}${hubs.length ? `, из них с пересадкой через ${hubs.join(' или ')}` : ''}.`,
                   earliestDeparture
                     ? `Раньше всего выезд в ${formatTime(earliestDeparture.departureAt)}, на месте в ${formatTime(earliestDeparture.arrivalAt)}.`
                     : '',
