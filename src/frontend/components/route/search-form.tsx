@@ -131,7 +131,7 @@ export function SearchForm({
               transition: 'font-size .45s cubic-bezier(.4,0,.2,1)',
             }}
           >
-            Находим, как доехать, когда прямого билета нет
+            Поможем найти ближайший билет
           </div>
         </div>
 
