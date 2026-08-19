@@ -22,6 +22,16 @@ function normalize(value: string): string {
   return value.trim().toLowerCase().replace(/ё/g, 'е');
 }
 
+/**
+ * Город принимается, только если он есть в справочнике: MCP Туту ищет по
+ * названию, и на выдуманном городе поиск молча вернёт пустоту вместо ошибки.
+ */
+export function isKnownCity(value: string): boolean {
+  const needle = normalize(value);
+  if (!needle) return false;
+  return ALL_CITIES.some((city) => normalize(city.n) === needle);
+}
+
 function findCities(query: string): City[] {
   const needle = normalize(query);
   if (needle.length < 2) return [];
@@ -68,6 +78,9 @@ export function CityInput({
   const [open, setOpen] = useState(false);
   const [errorOpen, setErrorOpen] = useState(false);
   const [active, setActive] = useState(0);
+  // Показываем «выберите из списка» только после того, как человек ушёл из
+  // поля: ругаться на каждую букву во время набора незачем.
+  const [dirty, setDirty] = useState(false);
   const blurTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const suggestions = useMemo(() => (open ? findCities(value) : []), [open, value]);
@@ -75,7 +88,10 @@ export function CityInput({
   function choose(city: City) {
     onChange(city.n);
     setOpen(false);
+    setDirty(false);
   }
+
+  const unknown = dirty && value.trim().length > 0 && !isKnownCity(value);
 
   return (
     <div
@@ -108,11 +124,23 @@ export function CityInput({
             onChange(event.target.value);
             setOpen(true);
             setActive(0);
+            setDirty(false);
           }}
           onFocus={() => setOpen(true)}
           // Клик по подсказке приходит после blur, поэтому закрываем с задержкой.
+          // Заодно решаем судьбу набранного текста: единственная подсказка
+          // подставляется сама, иначе поле помечается как незаполненное.
           onBlur={() => {
-            blurTimer.current = setTimeout(() => setOpen(false), 150);
+            blurTimer.current = setTimeout(() => {
+              setOpen(false);
+              if (!value.trim() || isKnownCity(value)) {
+                setDirty(false);
+                return;
+              }
+              const matches = findCities(value);
+              if (matches.length === 1) onChange(matches[0].n);
+              else setDirty(true);
+            }, 150);
           }}
           onKeyDown={(event) => {
             if (!suggestions.length) return;
@@ -134,7 +162,7 @@ export function CityInput({
             outline: 'none',
             fontSize: 17,
             fontWeight: 500,
-            color: detecting ? COLORS.mutedSoft : COLORS.ink,
+            color: detecting ? COLORS.mutedSoft : unknown ? '#E0402F' : COLORS.ink,
             background: 'transparent',
             padding: 0,
             width: '100%',
@@ -142,6 +170,22 @@ export function CityInput({
           }}
         />
       </label>
+
+      {unknown ? (
+        <span
+          style={{
+            position: 'absolute',
+            top: 'calc(100% + 6px)',
+            left: 18,
+            fontSize: 12,
+            color: '#FF9C90',
+            whiteSpace: 'nowrap',
+            pointerEvents: 'none',
+          }}
+        >
+          Выберите город из списка
+        </span>
+      ) : null}
 
       {onDetect ? (
         <button

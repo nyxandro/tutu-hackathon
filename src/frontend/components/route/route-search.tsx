@@ -21,6 +21,7 @@ import { AgentTrace } from '@/frontend/components/route/agent-trace';
 import { ChainCard } from '@/frontend/components/route/chain-card';
 import { HotelList } from '@/frontend/components/route/hotel-list';
 import { HowItWorks } from '@/frontend/components/route/how-it-works';
+import { isKnownCity } from '@/frontend/components/route/city-input';
 import { SearchForm } from '@/frontend/components/route/search-form';
 
 type Sort = 'departure' | 'arrival' | 'price';
@@ -67,7 +68,9 @@ export function RouteSearch() {
   const { detect, status: geoStatus, result: geoResult } = useNearestCity();
 
   function run(query: Omit<SearchQuery, 'modes'>) {
-    if (!query.origin.trim() || !query.destination.trim()) return;
+    // Вторая линия защиты: форма кнопку гасит, но запустить поиск можно ещё
+    // и с клавиатуры или быстрым сценарием.
+    if (!isKnownCity(query.origin) || !isKnownCity(query.destination)) return;
     const modes =
       excluded.length > 0
         ? TRANSPORT_MODES.map((mode) => mode.key).filter((key) => !excluded.includes(key))

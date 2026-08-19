@@ -10,7 +10,7 @@
 
 import { ROUTE_EXAMPLES, TRANSPORT_MODES, TRAVEL_CONSTRAINTS } from '@/frontend/config';
 import { COLORS, TRANSPORT_ICONS } from '@/frontend/design';
-import { CityInput } from '@/frontend/components/route/city-input';
+import { CityInput, isKnownCity } from '@/frontend/components/route/city-input';
 import { DatePicker } from '@/frontend/components/route/date-picker';
 import { TravelersPicker } from '@/frontend/components/route/travelers-picker';
 
@@ -58,6 +58,10 @@ export function SearchForm({
   /** После запуска поиска шапка сжимается: место нужно результатам. */
   compact: boolean;
 }) {
+
+  // Оба города обязаны быть из справочника: на выдуманном названии MCP Туту
+  // молча вернёт пустоту, и человек решит, что рейсов нет.
+  const ready = isKnownCity(from) && isKnownCity(to);
 
   return (
     <div
@@ -157,6 +161,7 @@ export function SearchForm({
           <form
             onSubmit={(event) => {
               event.preventDefault();
+              if (!ready) return;
               onSearch();
             }}
             style={{
@@ -186,19 +191,21 @@ export function SearchForm({
 
             <button
               type="submit"
+              disabled={!ready}
               style={{
                 flex: '0 0 170px',
                 minHeight: 72,
                 padding: '0 20px',
                 border: 'none',
                 borderRadius: '0 14px 14px 0',
-                background: COLORS.accent,
-                color: '#FFFFFF',
+                background: ready ? COLORS.accent : COLORS.accentSoft,
+                color: ready ? '#FFFFFF' : COLORS.mutedSoft,
                 fontFamily: 'inherit',
                 fontSize: 17,
                 fontWeight: 600,
                 lineHeight: 1.15,
-                cursor: 'pointer',
+                cursor: ready ? 'pointer' : 'default',
+                transition: 'background .2s, color .2s',
               }}
             >
               Подобрать
